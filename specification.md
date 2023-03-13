@@ -1,6 +1,6 @@
 # The Autograph Protocol
 
-Revision 2, 2023-02-03
+Revision 3 (Draft 1), 2023-03-13
 
 Christoffer Carlsson (editor)
 
@@ -8,93 +8,61 @@ Christoffer Carlsson (editor)
 
 - [1. Introduction](#1-introduction)
 - [2. Preliminaries](#2-preliminaries)
-  - [2.1. Roles](#21-roles)
-  - [2.2. Keys & signatures](#22-keys--signatures)
-  - [2.3. Cryptographic notation](#23-cryptographic-notation)
+  - [2.1. Cryptographic notation](#21-cryptographic-notation)
+  - [2.2. Roles](#22-roles)
+  - [2.3. Keys](#23-keys)
+  - [2.4. Message indexing](#24-message-indexing)
 - [3. The Autograph protocol](#3-the-autograph-protocol)
-  - [3.1. Overview](#31-overview)
-  - [3.2. Key share messages](#32-key-share-messages)
-  - [3.3. Key verification](#33-key-verification)
-  - [3.4. Authentication](#34-authentication)
-  - [3.5. Establishing trust](#35-establishing-trust)
-  - [3.6. Certifying ownership](#36-certifying-ownership)
-  - [3.7. Verifying ownership](#37-verifying-ownership)
-  - [3.8. Revoking trust](#38-revoking-trust)
+  - [3.1. Handshake](#31-handshake)
+  - [3.2. Identity verification](#32-identity-verification)
+  - [3.3. Encrypted messages](#33-encrypted-messages)
+  - [3.4. Certifying ownership](#34-certifying-ownership)
+  - [3.5. Verifying ownership](#35-verifying-ownership)
 - [4. Security considerations](#4-security-considerations)
   - [4.1. Key compromise](#41-key-compromise)
-  - [4.2. Verified key exchange](#42-verified-key-exchange)
-  - [4.3 Trusted party manipulation](#43-trusted-party-manipulation)
+  - [4.2. Identity verification](#42-identity-verification)
+  - [4.3. Trusted party manipulation](#43-trusted-party-manipulation)
 - [5. IPR](#5-ipr)
 - [6. Acknowledgements](#6-acknowledgements)
 - [7. References](#7-references)
 
 ## 1. Introduction
 
-This document describes the Autograph protocol. The protocol allows one party
-(”Bob”) to cryptographically verify any type of data from another party
-(”Alice”) based on public keys and signatures from trusted third parties (e.g.
-”Charlie”). Autograph provides cryptographic deniability and forward secrecy.
+This document describes the Autograph protocol. The protocol enables the
+following scenarios:
+
+1. **Encrypted messaging**: Two parties can exchange encrypted messages that
+   each can be verified to have originated from the sender and have not been
+   tampered with in transit.
+2. **Ownership verification**: Additionally, both parties can verify the
+   ownership of each other's cryptographic identity and the message contents by
+   relying on cryptographic signatures from trusted third parties.
+
+Autograph provides cryptographic deniability and forward secrecy.
 
 ## 2. Preliminaries
 
-### 2.1 Roles
-
-The Autograph protocol involves three parties: **Alice**, **Bob** and
-**Charlie**.
-
-- **Alice** wants to send encrypted data to Bob and certify that she is the
-  owner of the data.
-- **Bob** wants to accept encrypted data from parties like Alice and verify its
-  ownership. To enable this scenario, Bob relies on cryptographic signatures
-  from trusted third parties like Charlie.
-- **Charlie** creates cryptographic signatures that certifies ownership of data
-  for parties like Alice. This allows Bob to verify the ownership of data that
-  he receives from Alice.
-
-### 2.2 Keys & signatures
-
-Prior to a protocol run each party will have one or more of the following
-elliptic curve public keys and signatures:
-
-| Name | Definition                                                    | Required |
-| :--- | :------------------------------------------------------------ | :------- |
-| IKS  | An identity key used for signing                              | Yes      |
-| IKE  | An identity key used for deriving keys for encryption         | Yes      |
-| C    | A certificate containing pairs of signing keys and signatures | No       |
-| T    | A list of trusted signing keys                                | No       |
-
-All public keys have corresponding private keys, but to simplify description
-this document will focus on the public keys.
-
-During a protocol run each party will generate ephemeral X25519 key pairs
-\[[1](#7-references)\] using Elliptic-curve Diffie–Hellman (ECDH)
-\[[2](#7-references)\], create Ed25519 signatures \[[3](#7-references)\] using
-the Edwards-curve Digital Signature Algorithm (EdDSA) \[[4](#7-references)\],
-and derive 256-bit shared secret keys to encrypt their communications using AES
-\[[5](#7-references)\] in Galois/Counter Mode (GCM) \[[6](#7-references)\].
-
-During a protocol run each party's existing C and T values may be replaced with
-new ones.
-
-### 2.3 Cryptographic notation
+### 2.1 Cryptographic notation
 
 This document will use the following notation:
 
 - The concatenation of byte sequences **X** and **Y** is **X || Y**.
-- **""** (two double quotes) represents an empty byte sequence.
-- **ENCRYPT(K, M)** represents the AES-GCM encryption of plaintext M with the
-  256-bit key K. Since the key will be updated for every message the nonce is a
-  constant of 12 zero-filled bytes. The 128-bit authentication tag is appended
-  to the ciphertext.
-- **DECRYPT(K, C)** represents the AES-GCM decryption of ciphertext C with the
-  key K.
+- **ENCRYPT(K, N, M)** represents the AES \[[1](#7-references)\] in
+  Galois/Counter Mode (GCM) \[[2](#7-references)\] encryption of plaintext M
+  with the 256-bit key K. The nonce N is a 32-bit big-endian unsigned integer
+  padded on the left with 8 zero-filled bytes. The 128-bit authentication tag is
+  appended to the ciphertext.
+- **DECRYPT(K, N, C)** represents the AES-GCM decryption of ciphertext C with
+  the key K and nonce N.
 - **DH(PK1, PK2)** represents 32 bytes of shared secret output from the X25519
-  Elliptic Curve Diffie-Hellman function involving the key pairs represented by
-  public keys PK1 and PK2.
-- **SIGN(PK, M)** represents a byte sequence that is an EdDSA signature on the
-  byte sequence M and verifies with the public key PK, and was created using
-  PK's corresponding private key. The signing and verification function will be
-  Ed25519.
+  \[[3](#7-references)\] Elliptic Curve Diffie-Hellman (ECDH)
+  \[[4](#7-references)\] function involving the key pairs represented by public
+  keys PK1 and PK2.
+- **SIGN(PK, M)** represents a byte sequence that is an Edwards-curve Digital
+  Signature Algorithm (EdDSA) \[[5](#7-references)\] signature on the byte
+  sequence M and verifies with the public key PK, and was created using PK's
+  corresponding private key. The signing and verification function will be
+  Ed25519 \[[6](#7-references)\].
 - **KDF(KM, C)** represents 32 bytes of output from the HKDF algorithm
   \[[7](#7-references)\], using SHA-512 \[[8](#7-references)\], with inputs:
   - Input keying material = The byte sequence KM.
@@ -105,66 +73,191 @@ This document will use the following notation:
 - **HASH(M, N)** represents 64 bytes of SHA-512 output produced by iteratively
   hashing the byte sequence M N times.
 
+### 2.2 Roles
+
+The Autograph protocol involves two parties. The protocol allows each party to
+send encrypted messages to the other party. The protocol also allows each party
+to certify and verify the ownership of the other party's cryptographic identity
+and the message contents.
+
+The only distinguishing factor between the two parties during a protocol run is
+that the party who initiates the handshake (i.e. sends their ephemeral public
+key first) as described in [Section 3.1](#31-handshake) is the known as the
+**initiator** and the other party is known as the **responder**. Being the
+initiator or responder affects the order of calculations that a party performs
+during the handshake.
+
+To simplify description this document will use the role **Alice** to refer to
+the initiator, and the role **Bob** to refer to the responder.
+
+### 2.3 Keys
+
+Autograph will use the following elliptic curve public keys:
+
+| Name | Definition                                | Form    |
+| :--- | :---------------------------------------- | :------ |
+| IK   | A long-term identity key used for signing | Ed25519 |
+| EK   | An ephemeral key used for key agreement   | X25519  |
+
+All public keys have corresponding private keys, but to simplify description
+this document will focus on the public keys.
+
+In Autograph, X25519 public keys will use the little-endian encoding of the
+u-coordinate as specified in \[[3](#7-references)\]. Ed25519 public keys will
+use the little-endian encoding as specified in \[[5](#7-references)\]. The
+resulting byte sequences for X25519 and Ed25519 public keys will be 32 bytes
+long.
+
+Each party has an Ed25519 public key used for signing (IK<sub>A</sub> for Alice,
+IK<sub>B</sub> for Bob).
+
+During a handshake the two parties involved will each generate an ephemeral
+X25519 key pair with public key EK (EK<sub>A</sub> for Alice, EK<sub>B</sub> for
+Bob).
+
+During a handshake each party involved will derive a 32-byte secret key SK
+(SK<sub>A</sub> for Alice, SK<sub>B</sub> for Bob).
+
+### 2.4 Message indexing
+
+Each encrypted message that a party sends is indexed by a 32-bit big-endian
+unsigned integer N. The index is one-based. N is increased by 1 for each new
+message. The first message is assigned index 1, the second message is assigned
+index 2, the third message 3, and so on:
+
+N<sub>1</sub> = 1, N<sub>2</sub> = 2, N<sub>3</sub> = 3 ... N<sub>i</sub> = i
+
+By having N be a 32-bit unsigned integer there is an implicit maximum number
+(2<sup>32</sup> - 1) of messages that each party can send during the same
+protocol run.
+
 ## 3. The Autograph protocol
 
-### 3.1 Overview
+### 3.1 Handshake
 
-Autograph can be divided into three different phases:
-
-1. Bob and Charlie mutually authenticate each other. Bob adds Charlie as a
-   trusted party.
-2. Alice and Charlie mutually authenticate each other. As part of the
-   authentication process Alice may include additional data that she owns.
-   Charlie creates a signature that certifies Alice's ownership of her
-   cryptographic identity and data. Alice adds the signature and Charlie's
-   public key to a certificate.
-3. Alice performs a one-way authentication with Bob. She includes the
-   certificate from above. Since Charlie is one of Bob's trusted parties, Bob
-   can verify Alice's ownership of her cryptographic identity and data without
-   further contact with Charlie.
-
-The following sections describe these phases.
-
-### 3.2 Key share messages
-
-This section describes how a party calculates a key share message. Bob
-calculates the key share message KS<sub>B</sub> by performing the following
-steps:
-
-Bob generates an ephemeral X25519 key pair EK<sub>B</sub>. He then adds each of
-his identity public keys and the ephemeral public key to a key share message:
-
-KS<sub>B</sub> = IKS<sub>B</sub> || IKE<sub>B</sub> || EK<sub>B</sub>
-
-How key share messages are used is explained further in the following sections.
-
-### 3.3 Key verification
-
-This section describes how two parties can manually verify each other's identity
-keys to prevent man-in-the-middle attacks by calculating a safety number. Alice
-and Bob, for example, can manually verify each other's identity keys by
+This section describes how two parties agree on two 32-byte shared secret keys
+that will be used to secure their communication during this protocol run. Alice
+and Bob agree on the shared secret keys SK<sub>A</sub> and SK<sub>B</sub> by
 performing the following steps:
 
-Alice computes a 30-digit numeric fingerprint FH<sub>A</sub> for her identity
-keys IKS<sub>A</sub> and IKE<sub>A</sub>:
+Through some mechanism, each party obtains the other party's identity key IK
+(IK<sub>A</sub> for Alice, IK<sub>B</sub> for Bob).
 
-FH<sub>A</sub> = HASH(IKS<sub>A</sub> || IKE<sub>A</sub>, 5200)
+Alice generates an ephemeral X25519 key pair EK<sub>A</sub> and sends the public
+key to Bob.
+
+Bob generates an ephemeral X25519 key pair EK<sub>B</sub>.
+
+Upon receiving EK<sub>A</sub> from Alice, Bob creates a signature S<sub>B</sub>
+by calculating:
+
+S<sub>B</sub> = SIGN(IK<sub>B</sub>, IK<sub>A</sub> || IK<sub>B</sub> ||
+EK<sub>A</sub> || EK<sub>B</sub>)
+
+The S<sub>B</sub> signature certifies that Bob is in control of the
+IK<sub>B</sub> private key.
+
+Bob performs the following DH calculation:
+
+KM = DH(EK<sub>B</sub>, EK<sub>A</sub>)
+
+Bob then derives two secret keys, SK<sub>A</sub> and SK<sub>B</sub>, by
+calculating:
+
+SK<sub>A</sub> = KDF(KM, 0x00)\
+SK<sub>B</sub> = KDF(KM, 0x01)
+
+Bob deletes KM and his EK<sub>B</sub> private key.
+
+Bob then encrypts the S<sub>B</sub> signature using the SK<sub>B</sub> secret
+key, producing the ciphertext H<sub>B</sub>:
+
+H<sub>B</sub> = ENCRYPT(SK<sub>B</sub>, 0, S<sub>B</sub>)
+
+Bob sends EK<sub>B</sub> and H<sub>B</sub> to Alice.
+
+Upon receiving EK<sub>B</sub> and H<sub>B</sub> from Bob, Alice repeats the
+above DH and KDF calculations to derive the SK<sub>A</sub> and SK<sub>B</sub>
+secret keys. She deletes KM and her EK<sub>A</sub> private key.
+
+Alice then attempts to decrypt H<sub>B</sub> using SK<sub>B</sub>:
+
+S<sub>B</sub> = DECRYPT(SK<sub>B</sub>, 0, H<sub>B</sub>)
+
+If the decryption fails, Alice aborts the protocol. If the decryption succeeds,
+Alice verifies the signature S<sub>B</sub>. If the verification fails, Alice
+aborts the protocol.
+
+If the verification succeeds, Alice creates the signature S<sub>A</sub> by
+calculating:
+
+S<sub>A</sub> = SIGN(IK<sub>A</sub>, IK<sub>A</sub> || IK<sub>B</sub> ||
+EK<sub>A</sub> || EK<sub>B</sub>)
+
+The S<sub>A</sub> signature certifies that Alice is in control of the
+IK<sub>A</sub> private key.
+
+Alice then encrypts the S<sub>A</sub> signature using the SK<sub>A</sub> secret
+key, producing the ciphertext H<sub>A</sub>:
+
+H<sub>A</sub> = ENCRYPT(SK<sub>A</sub>, 0, S<sub>A</sub>)
+
+Alice sends H<sub>A</sub> to Bob.
+
+Upon receiving H<sub>A</sub> from Alice, Bob attempts to decrypt it using
+SK<sub>A</sub>:
+
+S<sub>A</sub> = DECRYPT(SK<sub>A</sub>, 0, H<sub>A</sub>)
+
+If the decryption fails, Bob aborts the protocol. If the decryption succeeds,
+Bob verifies the S<sub>A</sub> signature. If the verification fails, Bob aborts
+the protocol.
+
+If the verification succeeds, Alice and Bob have now established two 32-byte
+secret keys, SK<sub>A</sub> and SK<sub>B</sub>, that will be used to secure
+their communication during this protocol run.
+
+The ability to derive the correct SK<sub>A</sub> and SK<sub>B</sub> secret keys
+combined with the successful verification of the S<sub>A</sub> and S<sub>B</sub>
+signatures authenticates the handshake and certifies that both Alice and Bob are
+in control of their IK and EK private keys.
+
+### 3.2 Identity verification
+
+This section describes how two parties can manually verify each other's identity
+keys to prevent man-in-the-middle attacks by calculating a safety number. The
+verification can be done either before or after a protocol run. Alice and Bob
+verify each other's identity keys by performing the following steps:
+
+Alice computes a 30-digit numeric fingerprint FH<sub>A</sub> for her identity
+key IK<sub>A</sub>:
+
+FH<sub>A</sub> = HASH(IK<sub>A</sub>, 5200)
 
 Alice takes the first 30 bytes of FH<sub>A</sub> and splits them into six 5-byte
 chunks. She converts each 5-byte chunk into 5 digits by interpreting each chunk
-as a big-endian unsigned integer and reducing it modulo 100000.
+as a big-endian unsigned integer and reducing it modulo 100000 (if the result is
+an integer with less than 5 digits it is padded on the left with zeroes).
 
 Alice then concatenates the 6 groups of 5 digits into 30 digits to produce her
 fingerprint FP<sub>A</sub>.
 
-Upon receiving a key share message from Bob, Alice repeats the above steps using
-IKS<sub>B</sub> and IKE<sub>B</sub> to produce Bob's fingerprint FP<sub>B</sub>.
+Upon obtaining Bob's identity key IK<sub>B</sub>, Alice repeats the above steps
+to produce Bob's fingerprint FP<sub>B</sub>.
 
-Alice sorts and concatenates FP<sub>A</sub> and FP<sub>B</sub> to produce the
-safety number SN<sub>A</sub>.
+Alice compares the FP<sub>A</sub> and FP<sub>B</sub> fingerprints
+lexicographically to determine her safety number SN<sub>A</sub>.
 
-Upon receiving a key share message from Alice, Bob repeats the above steps to
-calculate SN<sub>B</sub>.
+If FP<sub>A</sub> is lexicographically less than FP<sub>B</sub>:
+
+SN<sub>A</sub> = FP<sub>A</sub> || FP<sub>B</sub>
+
+If FP<sub>A</sub> is lexicographically greater than FP<sub>B</sub>:
+
+SN<sub>A</sub> = FP<sub>B</sub> || FP<sub>A</sub>
+
+Upon obtaining Alice's identity key IK<sub>A</sub>, Bob repeats the above steps
+to calculate his safety number SN<sub>B</sub>.
 
 Alice and Bob manually compare each other's safety numbers out-of-band. If they
 don't match both parties abort the protocol.
@@ -172,289 +265,163 @@ don't match both parties abort the protocol.
 If the safety numbers match Alice and Bob have successfully verified each
 other's identity keys.
 
-### 3.4 Authentication
-
-This section describes how one party authenticates with another. Bob, for
-example, authenticates with Charlie by performing the following steps:
-
-Using a shared secret key BK, Bob derives the secret key AK that will be used to
-encrypt his auhentication message. A single byte KC is used to indicate the
-context for which the derived key AK will be used:
-
-AK = KDF(BK, KC)
-
-How the values of BK and KC are determined is explained further in the following
-sections.
-
-Bob loads the data D<sub>B</sub> that he wants to certify ownership for.
-
-If Bob does not have any data, or if he only wants to certify ownership for his
-IKS<sub>B</sub> private key, he sets D<sub>B</sub> to an empty byte sequence:
-
-D<sub>B</sub> = ""
-
-Bob then loads a certificate C<sub>B</sub> that contains identity keys and
-signatures from other parties that previously have cryptographically verified
-him as the owner of the data D<sub>B</sub> and the IKS<sub>B</sub> private key.
-
-If Bob does not yet have a certificate he sets C<sub>B</sub> to an empty byte
-sequence:
-
-C<sub>B</sub> = ""
-
-The specifics of certificates and how the different signatures are created are
-explained further in [Section 3.6](#36-certifying-ownership).
-
-Bob creates a signature S<sub>B</sub> by signing Charlie's ephemeral public key
-EK<sub>C</sub> and the data D<sub>B</sub>:
-
-S<sub>B</sub> = SIGN(IKS<sub>B</sub>, D<sub>B</sub> || EK<sub>C</sub>)
-
-The signature S<sub>B</sub> certifies that Bob is in control of the
-IKS<sub>B</sub> private key.
-
-Bob constructs the authentication message plaintext A<sub>B</sub> by
-concatenating the signature S<sub>B</sub>, the certificate C<sub>B</sub>, and
-the data D<sub>B</sub>. A 16-bit unsigned big-endian integer CL<sub>B</sub> is
-used to denote the number of public key- and signature pairs in the certificate
-C<sub>B</sub>:
-
-A<sub>B</sub> = S<sub>B</sub> || CL<sub>B</sub> || C<sub>B</sub> ||
-D<sub>B</sub>
-
-Bob encrypts the plaintext A<sub>B</sub> using the secret key AK, producing the
-authentication message AM<sub>B</sub>:
-
-AM<sub>B</sub> = ENCRYPT(AK, A<sub>B</sub>)
-
-Bob then deletes AK and sends AM<sub>B</sub> to Charlie.
-
-Upon receiving Bob's encrypted authentication message, Charlie repeats the KDF
-calculation from above to derive AK. He then attempts to decrypt the ciphertext
-AM<sub>B</sub>:
-
-A<sub>B</sub> = DECRYPT(AK, AM<sub>B</sub>)
-
-If the decryption fails Charlie aborts the protocol and deletes AK.
-
-If decryption succeeds Charlie deletes AK and reads S<sub>B</sub>,
-C<sub>B</sub>, and D<sub>B</sub> from A<sub>B</sub>.
-
-Charlie verifies the S<sub>B</sub> signature using IKS<sub>B</sub> and his
-EK<sub>C</sub> public key. If the verification fails Charlie aborts the
-protocol.
-
-Charlie then performs a trusted party verification by comparing the identity
-public keys in C<sub>B</sub> against a list of trusted public keys
-T<sub>C</sub>. Charlie uses a threshold number TH<sub>C</sub> to determine how
-many trusted public keys that needs to be found in C<sub>B</sub>.
-
-If Bob's identity key IKS<sub>B</sub> is found in Charlie's list of trusted
-public keys T<sub>C</sub>, Charlie will omit IKS<sub>B</sub> from T<sub>C</sub>
-when comparing T<sub>C</sub> against C<sub>B</sub>, and if TH<sub>C</sub> is
-greater than 0, Charlie will negate TH<sub>C</sub> by 1.
-
-If the number of trusted public keys found in C<sub>B</sub> is less than
-TH<sub>C</sub> Charlie aborts the protocol.
-
-If TH<sub>C</sub> is now greater than 0, Charlie verifies the signature for each
-of the corresponding trusted public keys found in C<sub>B</sub> using the data
-D<sub>B</sub> and the IKS<sub>B</sub> public key. If any of the verifications
-fail Charlie aborts the protocol.
-
-If the trusted party verification succeeds Bob has successfully authenticated
-with Charlie.
-
-### 3.5 Establishing trust
-
-This section describes how one party adds another as a trusted party. Bob adds
-Charlie to his list of trusted parties by performing the following steps:
-
-Charlie calculates a key share message KS<sub>C</sub> as described in
-[Section 3.2](#32-key-share-messages).
-
-Charlie sends KS<sub>C</sub> to Bob.
-
-Upon receiving KS<sub>C</sub> from Charlie, Bob calculates a key share message
-KS<sub>B</sub> as described in [Section 3.2](#32-key-share-messages).
-
-Bob sends KS<sub>B</sub> to Charlie.
-
-Bob calculates the shared secret key BK:
-
-BK = DH(IKE<sub>B</sub>, EK<sub>C</sub>) || DH(IKE<sub>C</sub>, EK<sub>B</sub>)
-
-Bob then deletes his ephemeral EK<sub>B</sub> private key.
-
-Upon receiving KS<sub>B</sub> from Bob, Charlie repeats the above step to
-calculate BK and then deletes his ephemeral EK<sub>C</sub> private key.
-
-Optionally, Bob and Charlie perform a key verification as described in
-[Section 3.3](#33-key-verification).
-
-Bob sets KC to 0x00 and authenticates with Charlie as described in
-[Section 3.4](#34-authentication). If the authentication fails both parties
-aborts the protocol and deletes BK.
-
-If Bob successfully authenticates with Charlie, Charlie sets KC to 0x01 and
-authenticates with Bob as described in [Section 3.4](#34-authentication) and
-then deletes BK.
-
-If the authentication fails Bob aborts the protocol and deletes BK.
-
-If Charlie successfully authenticates with Bob, Bob deletes BK and adds
-Charlie's identity public key IKS<sub>C</sub> to his list of trusted parties
-T<sub>B</sub>:
-
-T<sub>B</sub>' = T<sub>B</sub> || IKS<sub>C</sub>
-
-Bob replaces any existing T<sub>B</sub> with the updated value and stores it for
-future protocol runs.
-
-How lists of trusted parties are stored is beyond the scope of this document,
-but subject to the security considerations in
-[Section 4.3](#43-trusted-party-manipulation).
-
-### 3.6 Certifying ownership
-
-This section describes how one party can create a signature that certifies
-another party's ownership of cryptographic identity and data. Charlie certifies
-Alice's ownership by performing the following steps:
-
-Charlie calculates a key share message KS<sub>C</sub> as described in
-[Section 3.2](#32-key-share-messages).
-
-Charlie sends KS<sub>C</sub> to Alice.
-
-Upon receiving KS<sub>C</sub> from Charlie, Alice calculates a key share message
-KS<sub>A</sub> as described in [Section 3.2](#32-key-share-messages).
-
-Alice sends KS<sub>A</sub> to Charlie.
-
-Alice calculates the shared secret key BK:
-
-BK = DH(IKE<sub>A</sub>, EK<sub>C</sub>) || DH(IKE<sub>C</sub>, EK<sub>A</sub>)
-
-Alice then deletes her ephemeral EK<sub>A</sub> private key.
-
-Upon receiving KS<sub>A</sub> from Alice, Charlie repeats the above step to
-calculate BK and then deletes his ephemeral EK<sub>C</sub> private key.
-
-Optionally, Alice and Charlie perform a key verification as described in
-[Section 3.3](#33-key-verification).
-
-Alice sets KC to 0x00 and authenticates with Charlie as described in
-[Section 3.4](#34-authentication). Alice includes the data D<sub>A</sub>, if
-any, that she wants Charlie to sign in her authentication message. If the
-authentication fails Charlie aborts the protocol and deletes BK.
-
-If Alice successfully authenticates with Charlie, Charlie creates the signature
-AS<sub>C</sub>:
-
-AS<sub>C</sub> = SIGN(IKS<sub>C</sub>, D<sub>A</sub> || IKS<sub>A</sub>)
-
-Charlie sets KC to 0x01 and authenticates with Alice, using AS<sub>C</sub> as
-the data D<sub>C</sub> in his authentication message:
-
-D<sub>C</sub> = AS<sub>C</sub>
-
-Charlie then deletes BK.
-
-Alice will omit the data D<sub>C</sub> when performing the trusted party
-verification of Charlie's authentication. If the authentication fails Alice
-aborts the protocol and deletes BK.
-
-If Charlie successfully authenticates with Alice, Alice verifies the
-AS<sub>C</sub> signature using IKS<sub>C</sub> and D<sub>A</sub>. If the
-verification fails Alice aborts the protocol and deletes BK.
-
-If the verification succeeds, Alice deletes BK and adds IKS<sub>C</sub> and
-AS<sub>C</sub> to her certificate C<sub>A</sub>:
-
-C<sub>A</sub>' = C<sub>A</sub> || IKS<sub>C</sub> || AS<sub>C</sub>
-
-Alice can now use her updated certificate C<sub>A</sub>' to authenticate with
-parties like Bob.
-
-Alice replaces any existing certificate C<sub>A</sub> with the updated value and
-stores it for future protocol runs.
-
-How certificates are stored is beyond the scope of this document.
-
-### 3.7 Verifying ownership
-
-This section describes how one party can verify another party's ownership of
-cryptographic identity and data. Bob verifies Alice's ownership by performing
+### 3.3 Encrypted messages
+
+This section describes how two parties sends encrypted messages to each other.
+The receiving party is able to decrypt the messages and verify that they
+actually came from the sender and that they haven't been tampered with in
+transit. Alice and Bob exchange encrypted messages with each other by performing
 the following steps:
 
-Bob calculates a key share message KS<sub>B</sub> as described in
-[Section 3.2](#32-key-share-messages).
+Alice and Bob performs a handshake as described in [Section 3.1](#31-handshake).
+Optionally, they also perform an identity verification as described in
+[Section 3.2](#32-identity-verification).
 
-Bob sends KS<sub>B</sub> to Alice.
+For each message that Alice sends to Bob the following steps are performed:
 
-Upon receiving KS<sub>B</sub> from Bob, Alice calculates a key share message
-KS<sub>A</sub> as described in [Section 3.2](#32-key-share-messages).
+Alice indexes the message using the 32-bit big-endian unsigned integer N as
+described in [Section 2.4](#24-message-indexing).
 
-Alice sends KS<sub>A</sub> to Bob.
+The plaintext data that Alice wants to send to Bob is represented by the byte
+sequence D<sub>NA</sub>.
 
-Alice calculates the shared secret key BK:
+Alice encrypts the plaintext D<sub>NA</sub> using the secret key SK<sub>A</sub>,
+producing the ciphertext M<sub>NA</sub>. She prepends the message index N to the
+ciphtertext, producing the message NM<sub>NA</sub>:
 
-BK = DH(IKE<sub>A</sub>, EK<sub>B</sub>) || DH(IKE<sub>B</sub>, EK<sub>A</sub>)
+M<sub>NA</sub> = ENCRYPT(SK<sub>A</sub>, N, D<sub>NA</sub>)\
+NM<sub>NA</sub> = N || M<sub>NA</sub>
 
-Alice then deletes her ephemeral EK<sub>A</sub> private key.
+Alice sends NM<sub>NA</sub> to Bob.
 
-Upon receiving KS<sub>A</sub> from Alice, Bob repeats the above step to
-calculate BK and then deletes his ephemeral EK<sub>B</sub> private key.
+Upon receiving NM<sub>NA</sub> from Alice, Bob attempts to decrypt the
+ciphertext M<sub>NA</sub>:
 
-Optionally, Alice and Bob perform a key verification as described in
-[Section 3.3](#33-key-verification).
+D<sub>NA</sub> = DECRYPT(SK<sub>A</sub>, N, M<sub>NA</sub>)
 
-Alice sets KC to 0x00 and authenticates with Bob as described in
-[Section 3.4](#34-authentication). If the authentication fails both parties
-aborts the protocol and deletes BK.
+If the decryption fails Bob aborts the protocol.
 
-If the authentication succeeds, Bob has successfully verified Alice's ownership
-of her cryptographic identity and data. Both parties deletes BK.
+If decryption succeeds, Bob has successfully verified that the data
+D<sub>NA</sub> was sent by Alice and that it hasn't been tampered with in
+transit.
 
-### 3.8 Revoking trust
+Alice increases the value of the message index N by 1 for each new message that
+she sends.
 
-This section describes how one party can revoke the trust that previously have
-been established between another party as described in
-[Section 3.5](#35-establishing-trust). Bob revokes his trust in Charlie by
+Alice and Bob repeats the above steps for each message that Alice sends to Bob.
+
+By repeating the above steps, Bob can send encrypted messages back to Alice
+using the SK<sub>B</sub> secret key.
+
+### 3.4 Certifying ownership
+
+This section describes how one party can certifies the ownership of another
+party's cryptographic identity key IK and optionally some data D. Bob certifies
+Alice's ownership by performing the following steps:
+
+Alice and Bob performs a handshake as described in [Section 3.1](#31-handshake).
+Optionally, they also perform an identity verification as described in
+[Section 3.2](#32-identity-verification).
+
+Optionally, Alice sends some data D<sub>NA</sub> in an encrypted message to Bob
+as described in [Section 3.3](#33-encrypted-messages).
+
+If the origin and integrity of Alice's data D<sub>NA</sub> was verified
+successfully, Bob creates the signature C<sub>NA</sub> that certifies that
+certifies Alice's ownership of her identity key IK<sub>A</sub> and data
+D<sub>NA</sub>:
+
+C<sub>NA</sub> = SIGN(IK<sub>B</sub>, D<sub>NA</sub> || IK<sub>A</sub>)
+
+If Alice did not send any data D<sub>NA</sub>, Bob creates the signature
+C<sub>A</sub> that certifies Alice's ownership of her identity key
+IK<sub>A</sub> by calculating:
+
+C<sub>A</sub> = SIGN(IK<sub>B</sub>, IK<sub>A</sub>)
+
+The above steps can be repeated for each message that Alice sends to Bob.
+
+By obtaining the signatures C<sub>NA</sub> or C<sub>A</sub>, and Bob's identity
+key IK<sub>B</sub>, other parties can verify Alice's ownership in future
+protocol runs without further contact with Bob. The mechanism by which
+certifying signatures are obtained by other parties is beyond the scope of this
+document, but subject to the security considerations in
+[Section 4.3](#43-trusted-party-manipulation).
+
+By repeating the above steps Alice can certify Bob's ownership of his identity
+key IK<sub>B</sub> and each message containing data D<sub>NB</sub> by creating
+the signatures C<sub>NB</sub> and/or C<sub>B</sub>.
+
+How a party verifies another party's ownership is explained in the next section.
+
+### 3.5 Verifying ownership
+
+This section describes how a party verifies another party's ownership of their
+identity key IK and optionally some data D. Bob verifies Alice's ownership by
 performing the following steps:
 
-Bob deletes Charlie's IKS<sub>C</sub> public key from his list of trusted
-parties T<sub>B</sub>, producing T<sub>B</sub>'.
+Alice and Bob performs a handshake as described in [Section 3.1](#31-handshake).
+Optionally, they also perform an identity verification as described in
+[Section 3.2](#32-identity-verification).
 
-Bob replaces any existing T<sub>B</sub> with the updated T<sub>B</sub>' and
-stores it for future protocol runs.
+Optionally, Alice sends her data D<sub>NA</sub> in an encrypted message to Bob,
+as described in [Section 3.3](#33-encrypted-messages).
 
-How lists of trusted parties are managed and under what circumstances a party
-should or should not revoke the trust in another party is beyond the scope of
-this document, but subject to the security considerations in
+Through some mechanism, Bob obtains the identity keys IK and corresponding
+certifiying signatures C of some number of trusted third parties that in
+previous protocol runs have certified Alice's ownership of her identity key
+IK<sub>A</sub> and optionally data D<sub>NA</sub> as described in
+[Section 3.4](34-certifying-ownership). The specifics of how Bob determines
+which identity keys and signatures he obtains for a given protocol run is beyond
+the scope of this document, but subject to the security considerations in
 [Section 4.3](#43-trusted-party-manipulation).
+
+If the origin and integrity of Alice's data D<sub>NA</sub> was verified
+successfully, Bob verifies each of the obtained signatures C<sub>NA</sub> using
+their corresponding IK public key, Alice's identity key IK<sub>A</sub> and the
+data D<sub>NA</sub>. If any of the verifications fail Bob aborts the protocol.
+If all verifications succeed Bob has successfully verified Alice's ownership of
+her identity key IK<sub>A</sub> and data D<sub>NA</sub>.
+
+If Alice did not send any data D<sub>NA</sub> to Bob, he verifies each of the
+obtained signatures C<sub>A</sub> using their corresponding identity keys IK and
+Alice's identity key IK<sub>A</sub>. If any of the verifications fail Bob aborts
+the protocol. If all verifications succeed Bob has successfully verified Alice's
+ownership of her identity key IK<sub>A</sub>.
+
+Alice can send multiple encrypted messages to Bob and given that he is able to
+obtain the correct identity keys IK and certifying signatures C, Bob can repeat
+the above steps to verify Alice's ownership of each piece of data
+D<sub>NA</sub>.
+
+By repeating the above steps, Bob can send encrypted messages back to Alice and
+she can verify Bob's ownership of his identity key IK<sub>B</sub> and optionally
+data D<sub>NB</sub>.
 
 ## 4. Security considerations
 
 ### 4.1 Key compromise
 
-Compromise of a party's identity private keys allows impersonation of that party
-to others.
+Compromise of a party's long-term identity private key IK allows impersonation
+of that party to others.
 
-### 4.2 Key verification
+### 4.2 Identity verification
 
-If a key verification as described in [Section 3.3](#33-key-verification) is not
-performed, the parties will have no cryptographic guarantee as to who they are
-communicating with, which may enable man-in-the-middle attacks.
+If an identity verification as described in
+[Section 3.2](#32-identity-verification) is not performed, the parties will have
+no cryptographic guarantee as to who they are communicating with, which may
+enable man-in-the-middle attacks.
 
 ### 4.3 Trusted party manipulation
 
-If a malicious party is able to manipulate another party's list of trusted
-parties they could add or remove the identity keys of other parties (including
-their own), thus bypassing the authentication step described in
-[Section 3.5](#35-establishing-trust). Therefore, implementers of the protocol
-should take the appropriate steps to prevent unauthorized access to trusted
-party lists. How to implement these preventive measures is beyond the scope of
+If a malicious party is able to manipulate the mechanism through which another
+party obtains the IK public keys and certifying signatures C from trusted third
+parties they could add or remove the public keys and signatures of other parties
+(including their own), thus bypassing the ownership verification described in
+[Section 3.5](#35-verifying-ownership). Therefore, implementers of the protocol
+should take the appropriate steps to prevent unauthorized access to the
+mechanism through which parties obtains public keys and signatures of trusted
+third parties. How to implement these preventive measures is beyond the scope of
 this document.
 
 ## 5. IPR
@@ -468,34 +435,35 @@ Molin.
 
 The Autograph protocol was designed by Christoffer Carlsson.
 
-Thanks to Elnaz Abolahrar for discussions around using threshold numbers in
-trusted party verifications.
+Thanks to Elnaz Abolahrar for discussions around allowing a party's ownership of
+their cryptographic identity and data to be certified by a dynamic number of
+trusted third parties.
 
 ## 7. References
 
-[1] A. Langley, M. Hamburg, and S. Turner, “Elliptic Curves for Security”;
-Internet Engineering Task Force; RFC 7748; January 2016.
-<http://www.ietf.org/rfc/rfc7748.txt>
-
-[2] D. McGrew, K. Igoe, and M. Salter, “Fundamental Elliptic Curve Cryptography
-Algorithms”; Internet Engineering Task Force; RFC 6090; February 2011.
-<http://www.ietf.org/rfc/rfc6090.txt>
-
-[3] D. Bernstein, N. Duif, T. Lange, P. Schwabe, and B. Yang, "High-speed
-high-security signatures"; September 2011.
-<https://ed25519.cr.yp.to/ed25519-20110926.pdf>
-
-[4] S. Josefsson and I. Liusvaara, “Edwards-Curve Digital Signature Algorithm
-(EdDSA)”; Internet Engineering Task Force; RFC 8032; January 2017.
-<http://www.ietf.org/rfc/rfc8032.txt>
-
-[5] M. Dworkin, E. Barker, J. Nechvatal, J. Foti, L. Bassham, E. Roback, and J.
+[1] M. Dworkin, E. Barker, J. Nechvatal, J. Foti, L. Bassham, E. Roback, and J.
 Dray Jr, "Advanced Encryption Standard (AES)"; Federal Information Processing
 Standards Publication 197; November 2001.
 <https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf>
 
-[6] D. McGrew and J. Viega, “The Galois/Counter Mode of Operation (GCM)”;
+[2] D. McGrew and J. Viega, “The Galois/Counter Mode of Operation (GCM)”;
 Submission to NIST Modes of Operation Process; January, 2004.
+
+[3] A. Langley, M. Hamburg, and S. Turner, “Elliptic Curves for Security”;
+Internet Engineering Task Force; RFC 7748; January 2016.
+<http://www.ietf.org/rfc/rfc7748.txt>
+
+[4] D. McGrew, K. Igoe, and M. Salter, “Fundamental Elliptic Curve Cryptography
+Algorithms”; Internet Engineering Task Force; RFC 6090; February 2011.
+<http://www.ietf.org/rfc/rfc6090.txt>
+
+[5] S. Josefsson and I. Liusvaara, “Edwards-Curve Digital Signature Algorithm
+(EdDSA)”; Internet Engineering Task Force; RFC 8032; January 2017.
+<http://www.ietf.org/rfc/rfc8032.txt>
+
+[6] D. Bernstein, N. Duif, T. Lange, P. Schwabe, and B. Yang, "High-speed
+high-security signatures"; September 2011.
+<https://ed25519.cr.yp.to/ed25519-20110926.pdf>
 
 [7] H. Krawczyk and P. Eronen, “HMAC-based Extract-and-Expand Key Derivation
 Function (HKDF)”; Internet Engineering Task Force; RFC 5869; May 2010.
