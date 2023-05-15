@@ -21,5 +21,5 @@ run the attacker analysis by executing the following commands in a terminal
 
 ```bash
 cd <path-to-repo>/verification/verifpal
-verifpal verify handshake.vp
+verifpal verify autograph.vp
 ```
