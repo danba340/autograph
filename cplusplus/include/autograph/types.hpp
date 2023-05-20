@@ -1,34 +1,26 @@
 #pragma once
 
 #include <functional>
+#include <vector>
 
 namespace autograph {
 
-using Handshake = unsigned char[80];
+using Bytes = std::vector<unsigned char>;
 
-using PrivateKey = unsigned char[32];
+struct KeyPair {
+  Bytes private_key;
+  Bytes public_key;
+};
 
-using PublicKey = unsigned char[32];
+using CertifyFunction = std::function<Bytes(const Bytes &)>;
 
-using SafetyNumber = unsigned char[60];
+using DecryptFunction = std::function<Bytes(const Bytes &)>;
 
-using Signature = unsigned char[64];
+using EncryptFunction = std::function<Bytes(const Bytes &)>;
 
-using CertifyFunction = std::function<bool(
-    unsigned char *, const unsigned char *, const unsigned long long)>;
+using SafetyNumberFunction = std::function<Bytes(const Bytes &)>;
 
-using DecryptFunction = std::function<bool(
-    unsigned char *, const unsigned char *, const unsigned long long)>;
-
-using EncryptFunction = std::function<bool(
-    unsigned char *, const unsigned char *, const unsigned long long)>;
-
-using SafetyNumberFunction =
-    std::function<bool(unsigned char *, const unsigned char *)>;
-
-using VerifyFunction =
-    std::function<bool(const unsigned char *, const unsigned long long,
-                       const unsigned char *, const unsigned long long)>;
+using VerifyFunction = std::function<bool(const Bytes &, const Bytes &)>;
 
 struct Session {
   CertifyFunction certify;
@@ -37,14 +29,15 @@ struct Session {
   VerifyFunction verify;
 };
 
-using SessionResult = std::pair<bool, Session>;
+using SessionFunction = std::function<Session(const Bytes &)>;
 
-using SessionFunction = std::function<SessionResult(const unsigned char *)>;
+struct Handshake {
+  Bytes message;
+  SessionFunction establish_session;
+};
 
-using HandshakeResult = std::pair<bool, SessionFunction>;
-
-using HandshakeFunction = std::function<HandshakeResult(
-    unsigned char *, const unsigned char *, const unsigned char *)>;
+using HandshakeFunction =
+    std::function<Handshake(const Bytes &, const Bytes &)>;
 
 struct Party {
   SafetyNumberFunction calculate_safety_number;

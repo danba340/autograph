@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "autograph.h"
 #include "constants.hpp"
@@ -8,25 +9,29 @@
 namespace autograph {
 
 std::string encode_chunk(const unsigned char *digest, const unsigned int i) {
-  int number = ((digest[i] << 24) | (digest[i + 1] << 16) |
-                (digest[i + 2] << 8) | digest[i + 3]) %
-               SAFETY_NUMBER_DIVISOR;
+  const unsigned long long a = digest[i];
+  const unsigned long long b = digest[i + 1];
+  const unsigned long long c = digest[i + 2];
+  const unsigned long long d = digest[i + 3];
+  const unsigned long long e = digest[i + 4];
+  const unsigned int number =
+      (a << 32 | b << 24 | c << 16 | d << 8 | e) % SAFETY_NUMBER_DIVISOR;
   std::string digits = std::to_string(number);
-  digits.resize(SAFETY_NUMBER_CHUNK_SIZE, '0');
+  digits.resize(SAFETY_NUMBER_CHUNK_SIZE, 0);
   return std::move(digits);
 }
 
 std::string calculate_fingerprint(const unsigned char *identity_key) {
-  unsigned char digest[DIGEST_SIZE];
-  bool hash_result =
-      hash(digest, identity_key, PUBLIC_KEY_SIZE, SAFETY_NUMBER_ITERATIONS);
+  std::vector<unsigned char> digest(DIGEST_SIZE);
+  bool hash_result = hash(digest.data(), identity_key, PUBLIC_KEY_SIZE,
+                          SAFETY_NUMBER_ITERATIONS);
   std::string fingerprint;
   if (!hash_result) {
     return std::move(fingerprint);
   }
   for (int i = 0; i < SAFETY_NUMBER_FINGERPRINT_SIZE;
        i += SAFETY_NUMBER_CHUNK_SIZE) {
-    std::string chunk = encode_chunk(digest, i);
+    std::string chunk = encode_chunk(digest.data(), i);
     fingerprint.insert(fingerprint.end(), chunk.begin(), chunk.end());
   }
   return std::move(fingerprint);

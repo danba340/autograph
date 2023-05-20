@@ -1,27 +1,23 @@
 #pragma once
 
+#include "constants.hpp"
 #include "types.hpp"
 
 namespace autograph {
 
-HandshakeFunction create_handshake(
-    const bool is_initiator, const unsigned char *our_identity_private_key,
-    const unsigned char *our_identity_public_key,
-    unsigned char *our_ephemeral_private_key,
-    const unsigned char *our_ephemeral_public_key);
+HandshakeFunction create_handshake(const bool is_initiator,
+                                   const KeyPair &identity_key_pair,
+                                   KeyPair &ephemeral_key_pair);
 
-Party create_party(bool is_initiator, const unsigned char *identity_private_key,
-                   const unsigned char *identity_public_key,
-                   unsigned char *ephemeral_private_key,
-                   const unsigned char *ephemeral_public_key);
+Party create_party(const bool is_initiator, const KeyPair &identity_key_pair,
+                   KeyPair &ephemeral_key_pair);
 
-SafetyNumberFunction create_safety_number(
-    const unsigned char *our_identity_key);
+SafetyNumberFunction create_safety_number(const Bytes &our_identity_key);
 
-SessionFunction create_session(const unsigned char *our_private_key,
-                               const unsigned char *their_public_key,
-                               const unsigned char *transcript,
-                               const unsigned char *our_secret_key,
-                               const unsigned char *their_secret_key);
+SessionFunction create_session(const Bytes &our_private_key,
+                               const Bytes &their_public_key,
+                               const Bytes &transcript,
+                               const Bytes &our_secret_key,
+                               const Bytes &their_secret_key);
 
 }  // namespace autograph
