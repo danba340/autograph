@@ -2,8 +2,8 @@
 
 namespace autograph {
 
-Party create_party(const bool is_initiator, const KeyPair &identity_key_pair,
-                   KeyPair &ephemeral_key_pair) {
+Party create_party(const bool is_initiator, const KeyPair identity_key_pair,
+                   KeyPair ephemeral_key_pair) {
   auto calculate_safety_number =
       create_safety_number(identity_key_pair.public_key);
   auto perform_handshake =
@@ -12,7 +12,7 @@ Party create_party(const bool is_initiator, const KeyPair &identity_key_pair,
       calculate_safety_number,
       perform_handshake,
   };
-  return std::move(party);
+  return party;
 }
 
 }  // namespace autograph
