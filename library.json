@@ -10,17 +10,33 @@
     }
   ],
   "build": {
-    "includeDir": "cplusplus/include",
+    "includeDir": ".",
     "flags": [
-      "-D CONFIGURED",
-      "-D DEV_MODE=0",
-      "-I c/libsodium/src/libsodium/include",
-      "-I c/libsodium/src/libsodium/include/sodium"
+      "-std=c11",
+      "-std=c++17",
+      "-DCONFIGURED",
+      "-DDEV_MODE=0",
+      "-DHAVE_WEAK_SYMBOLS",
+      "-DNATIVE_LITTLE_ENDIAN",
+      "-DRANDOMBYTES_DEFAULT_IMPLEMENTATION",
+      "-D__STDC_CONSTANT_MACROS",
+      "-D__STDC_LIMIT_MACROS",
+      "-fexceptions",
+      "-Wno-deprecated-declarations",
+      "-Wno-implicit-fallthrough",
+      "-Wno-type-limits",
+      "-Wno-unknown-pragmas",
+      "-Wno-unused-function",
+      "-Wno-unused-variable",
+      "-Icplusplus/include",
+      "-Icplusplus/include/autograph",
+      "-Icplusplus/libsodium/src/libsodium/include",
+      "-Icplusplus/libsodium/src/libsodium/include/sodium"
     ],
     "srcDir": ".",
-    "srcFilter": "-<*> +<c/src> +<cplusplus/src +<c/libsodium/src/libsodium> -<c/libsodium/src/libsodium/include>"
+    "srcFilter": "-<*> +<cplusplus/src> +<cplusplus/libsodium/src/libsodium> -<cplusplus/libsodium/src/libsodium/include>"
   },
-  "frameworks": "*",
+  "frameworks": "espidf",
   "keywords": [
     "security",
     "identity",
@@ -39,12 +55,12 @@
     "diffie-hellman"
   ],
   "license": "Unlicense",
-  "platforms": "*",
+  "platforms": "espressif32",
   "repository": {
     "type": "git",
     "url": "https://github.com/christoffercarlsson/autograph.git"
   },
   "scripts": {
-    "postinstall": "scripts/sodium-version.sh"
+    "postinstall": "cplusplus/scripts/sodium-version.sh"
   }
 }
