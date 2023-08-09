@@ -116,11 +116,11 @@ TEST_CASE("Session", "[session]") {
   auto alice = Autograph::createInitiator(aliceIdentityKeyPair);
   auto bob = Autograph::createResponder(bobIdentityKeyPair);
 
-  auto aliceHandshake = alice
-                            .performHandshake(aliceEphemeralKeyPair,
-                                              bobIdentityKeyPair.publicKey,
-                                              bobEphemeralKeyPair.publicKey)
-                            .handshake;
+  auto aliceHandshake =
+      alice
+          .performHandshake(aliceEphemeralKeyPair, bobIdentityKeyPair.publicKey,
+                            bobEphemeralKeyPair.publicKey)
+          .handshake;
   auto bobHandshake =
       bob.performHandshake(bobEphemeralKeyPair, aliceIdentityKeyPair.publicKey,
                            aliceEphemeralKeyPair.publicKey)

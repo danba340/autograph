@@ -7,10 +7,10 @@ namespace Autograph {
 HandshakeFunction createHandshake(const bool isInitiator,
                                   const SignFunction sign,
                                   const Bytes ourIdentityPublicKey) {
-  auto perform_handshake = [isInitiator, sign, ourIdentityPublicKey](
-                               KeyPair &ourEphemeralKeyPair,
-                               const Bytes theirIdentityKey,
-                               const Bytes theirEphemeralKey) {
+  auto performHandshake = [isInitiator, sign, ourIdentityPublicKey](
+                              KeyPair &ourEphemeralKeyPair,
+                              const Bytes theirIdentityKey,
+                              const Bytes theirEphemeralKey) {
     auto safeSign = createSafeSign(sign);
     Bytes transcript(128);
     Bytes ourSecretKey(32);
@@ -28,14 +28,14 @@ HandshakeFunction createHandshake(const bool isInitiator,
             isInitiator ? 1 : 0, signResult.signature.data(),
             ourEphemeralKeyPair.privateKey.data(),
             theirEphemeralKey.data()) == 0;
-    SessionFunction establish_session = createSession(
+    SessionFunction establishSession = createSession(
         safeSign, theirIdentityKey, transcript, ourSecretKey, theirSecretKey);
-    Handshake handshake = {message, establish_session};
+    Handshake handshake = {message, establishSession};
     bool success = signResult.success && transcriptSuccess && handshakeSuccess;
     HandshakeResult result = {success, handshake};
     return result;
   };
-  return perform_handshake;
+  return performHandshake;
 }
 
 }  // namespace Autograph

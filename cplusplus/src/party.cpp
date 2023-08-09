@@ -9,11 +9,7 @@ Party createParty(const bool isInitiator, const SignFunction sign,
                   const Bytes identityPublicKey) {
   auto calculateSafetyNumber = createSafetyNumber(identityPublicKey);
   auto performHandshake = createHandshake(isInitiator, sign, identityPublicKey);
-  Party party = {
-      calculateSafetyNumber,
-      performHandshake,
-  };
-  return party;
+  return {calculateSafetyNumber, performHandshake};
 }
 
 Party createInitiator(const SignFunction sign, const Bytes identityPublicKey) {

@@ -6,8 +6,7 @@ namespace Autograph {
 
 SignResult createErrorResult() {
   Bytes signature(64, 0);
-  SignResult result = {false, signature};
-  return result;
+  return {false, signature};
 }
 
 SignFunction createSafeSign(const SignFunction sign) {
