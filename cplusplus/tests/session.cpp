@@ -35,15 +35,15 @@ TEST_CASE("Session", "[session]") {
        0,   26,  41,  131, 245, 177, 87,  106, 105, 167, 58,
        158, 184, 244, 65,  205, 42,  40,  80,  134, 52}};
 
-  Autograph::Bytes aliceMessage = {0,   0,   0,   1,   203, 203, 240, 117,
-                                   151, 142, 77,  113, 252, 151, 171, 12,
-                                   154, 177, 105, 6,   248, 79,  37,  105,
-                                   238, 243, 135, 194, 50,  34,  253};
+  Autograph::Bytes aliceMessage = {0,   0,   0,   0,   0,   0,  0,   1,   203,
+                                   203, 240, 117, 151, 142, 77, 113, 252, 151,
+                                   171, 12,  154, 177, 105, 6,  248, 79,  37,
+                                   105, 238, 243, 135, 194, 50, 34,  253};
 
-  Autograph::Bytes bobMessage = {0,   0,   0,  1,   139, 162, 147, 198,
-                                 9,   205, 34, 7,   221, 213, 250, 54,
-                                 187, 229, 89, 17,  48,  96,  18,  187,
-                                 111, 237, 72, 189, 169, 210, 108};
+  Autograph::Bytes bobMessage = {0,   0,   0,   0,   0,   0,   0,   1,   139,
+                                 162, 147, 198, 9,   205, 34,  7,   221, 213,
+                                 250, 54,  187, 229, 89,  17,  48,  96,  18,
+                                 187, 111, 237, 72,  189, 169, 210, 108};
 
   Autograph::Bytes aliceSignatureData = {
       86,  231, 106, 104, 140, 212, 209, 113, 91,  48,  249, 242, 132,
@@ -116,18 +116,18 @@ TEST_CASE("Session", "[session]") {
   auto alice = Autograph::createInitiator(aliceIdentityKeyPair);
   auto bob = Autograph::createResponder(bobIdentityKeyPair);
 
-  auto aliceHandshake =
-      alice
-          .performHandshake(aliceEphemeralKeyPair, bobIdentityKeyPair.publicKey,
-                            bobEphemeralKeyPair.publicKey)
-          .handshake;
-  auto bobHandshake =
-      bob.performHandshake(bobEphemeralKeyPair, aliceIdentityKeyPair.publicKey,
-                           aliceEphemeralKeyPair.publicKey)
-          .handshake;
+  auto aliceKeyExchange = alice
+                              .performKeyExchange(aliceEphemeralKeyPair,
+                                                  bobIdentityKeyPair.publicKey,
+                                                  bobEphemeralKeyPair.publicKey)
+                              .keyExchange;
+  auto bobKeyExchange = bob.performKeyExchange(bobEphemeralKeyPair,
+                                               aliceIdentityKeyPair.publicKey,
+                                               aliceEphemeralKeyPair.publicKey)
+                            .keyExchange;
 
-  auto a = aliceHandshake.establishSession(bobHandshake.message).session;
-  auto b = bobHandshake.establishSession(aliceHandshake.message).session;
+  auto a = aliceKeyExchange.verify(bobKeyExchange.handshake).session;
+  auto b = bobKeyExchange.verify(aliceKeyExchange.handshake).session;
 
   SECTION("should allow Alice to send encrypted data to Bob") {
     auto encryptResult = a.encrypt(data);
@@ -152,7 +152,7 @@ TEST_CASE("Session", "[session]") {
       "data") {
     auto encryptResult = a.encrypt(data);
     auto decryptResult = b.decrypt(encryptResult.message);
-    auto certifyResult = b.certify(decryptResult.data);
+    auto certifyResult = b.signData(decryptResult.data);
     REQUIRE(encryptResult.success == true);
     REQUIRE(decryptResult.success == true);
     REQUIRE(certifyResult.success == true);
@@ -165,7 +165,7 @@ TEST_CASE("Session", "[session]") {
       "data") {
     auto encryptResult = b.encrypt(data);
     auto decryptResult = a.decrypt(encryptResult.message);
-    auto certifyResult = a.certify(decryptResult.data);
+    auto certifyResult = a.signData(decryptResult.data);
     REQUIRE(encryptResult.success == true);
     REQUIRE(decryptResult.success == true);
     REQUIRE(certifyResult.success == true);
@@ -174,14 +174,14 @@ TEST_CASE("Session", "[session]") {
   }
 
   SECTION("should allow Bob to certify Alice's ownership of her identity key") {
-    auto certifyResult = b.certify({});
+    auto certifyResult = b.signIdentity();
     REQUIRE(certifyResult.success == true);
     REQUIRE_THAT(certifyResult.signature,
                  Catch::Matchers::Equals(bobSignatureIdentity));
   }
 
   SECTION("should allow Alice to certify Bob's ownership of his identity key") {
-    auto certifyResult = a.certify({});
+    auto certifyResult = a.signIdentity();
     REQUIRE(certifyResult.success == true);
     REQUIRE_THAT(certifyResult.signature,
                  Catch::Matchers::Equals(aliceSignatureIdentity));
@@ -190,28 +190,28 @@ TEST_CASE("Session", "[session]") {
   SECTION(
       "should allow Bob to verify Alice's ownership of her identity key and "
       "data based on Charlie's public key and signature") {
-    bool verified = b.verify(aliceCertificateData, data);
+    bool verified = b.verifyData(aliceCertificateData, data);
     REQUIRE(verified == true);
   }
 
   SECTION(
       "should allow Alice to verify Bob's ownership of his identity key and "
       "data based on Charlie's public key and signature") {
-    bool verified = a.verify(bobCertificateData, data);
+    bool verified = a.verifyData(bobCertificateData, data);
     REQUIRE(verified == true);
   }
 
   SECTION(
       "should allow Bob to verify Alice's ownership of her identity key based "
       "on Charlie's public key and signature") {
-    bool verified = b.verify(aliceCertificateIdentity, {});
+    bool verified = b.verifyIdentity(aliceCertificateIdentity);
     REQUIRE(verified == true);
   }
 
   SECTION(
       "should allow Alice to verify Bob's ownership of his identity key based "
       "on Charlie's public key and signature") {
-    bool verified = a.verify(bobCertificateIdentity, {});
+    bool verified = a.verifyIdentity(bobCertificateIdentity);
     REQUIRE(verified == true);
   }
 }

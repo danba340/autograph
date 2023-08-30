@@ -111,13 +111,13 @@ final class SessionTests: XCTestCase {
     ]
   )
   let aliceMessage: Bytes = [
-    0, 0, 0, 1, 203, 203, 240, 117,
+    0, 0, 0, 0, 0, 0, 0, 1, 203, 203, 240, 117,
     151, 142, 77, 113, 252, 151, 171, 12,
     154, 177, 105, 6, 248, 79, 37, 105,
     238, 243, 135, 194, 50, 34, 253,
   ]
   let bobMessage: Bytes = [
-    0, 0, 0, 1, 139, 162, 147, 198,
+    0, 0, 0, 0, 0, 0, 0, 1, 139, 162, 147, 198,
     9, 205, 34, 7, 221, 213, 250, 54,
     187, 229, 89, 17, 48, 96, 18, 187,
     111, 237, 72, 189, 169, 210, 108,
@@ -220,18 +220,18 @@ final class SessionTests: XCTestCase {
                   0, 26, 41, 131, 245, 177, 87, 106, 105, 167, 58,
                   158, 184, 244, 65, 205, 42, 40, 80, 134, 52]
     )
-    let aliceHandshake = alice.performHandshake(
+    let aliceKeyExchange = alice.performKeyExchange(
       &aliceEphemeralKeyPair,
       bobIdentityKeyPair.publicKey,
       bobEphemeralKeyPair.publicKey
-    ).handshake
-    let bobHandshake = bob.performHandshake(
+    ).keyExchange
+    let bobKeyExchange = bob.performKeyExchange(
       &bobEphemeralKeyPair,
       aliceIdentityKeyPair.publicKey,
       aliceEphemeralKeyPair.publicKey
-    ).handshake
-    a = aliceHandshake.establishSession(bobHandshake.message).session
-    b = bobHandshake.establishSession(aliceHandshake.message).session
+    ).keyExchange
+    a = aliceKeyExchange.verify(bobKeyExchange.handshake).session
+    b = bobKeyExchange.verify(aliceKeyExchange.handshake).session
   }
 
   // Should allow Alice to send encrypted data to Bob
@@ -258,7 +258,7 @@ final class SessionTests: XCTestCase {
   func testBobCertifyAliceData() {
     let encryptResult = a.encrypt(data)
     let decryptResult = b.decrypt(encryptResult.message)
-    let certifyResult = b.certify(decryptResult.data)
+    let certifyResult = b.signData(decryptResult.data)
     XCTAssertTrue(encryptResult.success)
     XCTAssertTrue(decryptResult.success)
     XCTAssertTrue(certifyResult.success)
@@ -269,7 +269,7 @@ final class SessionTests: XCTestCase {
   func testAliceCertifyBobData() {
     let encryptResult = b.encrypt(data)
     let decryptResult = a.decrypt(encryptResult.message)
-    let certifyResult = a.certify(decryptResult.data)
+    let certifyResult = a.signData(decryptResult.data)
     XCTAssertTrue(encryptResult.success)
     XCTAssertTrue(decryptResult.success)
     XCTAssertTrue(certifyResult.success)
@@ -278,14 +278,14 @@ final class SessionTests: XCTestCase {
 
   // Should allow Bob to certify Alice's ownership of her identity key
   func testBobCertifyAliceIdentity() {
-    let certifyResult = b.certify(nil)
+    let certifyResult = b.signIdentity()
     XCTAssertTrue(certifyResult.success)
     XCTAssertEqual(certifyResult.signature, bobSignatureIdentity)
   }
 
   // Should allow Alice to certify Bob's ownership of his identity key
   func testAliceCertifyBobIdentity() {
-    let certifyResult = a.certify(nil)
+    let certifyResult = a.signIdentity()
     XCTAssertTrue(certifyResult.success)
     XCTAssertEqual(certifyResult.signature, aliceSignatureIdentity)
   }
@@ -293,28 +293,28 @@ final class SessionTests: XCTestCase {
   // Should allow Bob to verify Alice's ownership of her identity key and data
   // based on Charlie's public key and signature
   func testBobVerifyAliceData() {
-    let verified = b.verify(aliceCertificateData, data)
+    let verified = b.verifyData(aliceCertificateData, data)
     XCTAssertTrue(verified)
   }
 
   // Should allow Alice to verify Bob's ownership of his identity key and ddata
   // based on Charlie's public key and signature
   func testAliceVerifyBobData() {
-    let verified = a.verify(bobCertificateData, data)
+    let verified = a.verifyData(bobCertificateData, data)
     XCTAssertTrue(verified)
   }
 
   // Should allow Bob to verify Alice's ownership of her identity key based on
   // Charlie's public key and signature
   func testBobVerifyAliceIdentity() {
-    let verified = b.verify(aliceCertificateIdentity, nil)
+    let verified = b.verifyIdentity(aliceCertificateIdentity)
     XCTAssertTrue(verified)
   }
 
   // Should allow Alice to verify Bob's ownership of his identity key based on
   // Charlie's public key and signature
   func testAliceVerifyBobIdentity() {
-    let verified = a.verify(bobCertificateIdentity, nil)
+    let verified = a.verifyIdentity(bobCertificateIdentity)
     XCTAssertTrue(verified)
   }
 }
