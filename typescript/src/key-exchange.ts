@@ -4,7 +4,6 @@ import {
   KeyPair,
   SignFunction
 } from '../types'
-
 import {
   createDecrypt,
   createEncrypt,
