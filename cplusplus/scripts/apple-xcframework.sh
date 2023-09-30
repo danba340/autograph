@@ -42,7 +42,7 @@ build_cmake() {
         -DCMAKE_OSX_ARCHITECTURES="${2}" \
         -DAUTOGRAPH_INSTALL=0 \
         -DAUTOGRAPH_TESTS=0 \
-        -B "${build_path}" "${SOURCE_DIR}"
+        -B "${build_path}" "${SOURCE_DIR}/.."
   (cd "${build_path}" && make)
 }
 

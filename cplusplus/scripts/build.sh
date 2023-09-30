@@ -64,7 +64,7 @@ generate_cmake() {
     -DCMAKE_BUILD_TYPE=${AUTOGRAPH_BUILD_TYPE} \
     -DAUTOGRAPH_INSTALL=${AUTOGRAPH_INSTALL} \
     -DAUTOGRAPH_TESTS=${AUTOGRAPH_TESTS} \
-    -B "${BUILD_DIR}" "${SOURCE_DIR}"
+    -B "${BUILD_DIR}" "${SOURCE_DIR}/.."
 }
 
 build_target() {

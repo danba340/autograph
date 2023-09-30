@@ -23,6 +23,7 @@ cplusplus/build/
 cplusplus/bin/
 cplusplus/lib/
 .cmake/
+.cache/
 CMakeCache.txt
 CMakeFiles/
 Makefile
