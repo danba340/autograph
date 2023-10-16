@@ -27,13 +27,13 @@ export const createSafeSign =
 
 export const createSign =
   (identityPrivateKey: Uint8Array): SignFunction =>
-  async (subject: Uint8Array) => {
+  (subject: Uint8Array) => {
     const signature = createSignatureBytes()
-    const success = await autograph_sign_subject(
+    const success = autograph_sign_subject(
       signature,
       identityPrivateKey,
       subject,
-      BigInt(subject.byteLength)
+      subject.byteLength
     )
     return { success, signature }
   }

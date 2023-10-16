@@ -1,6 +1,6 @@
 # The Autograph Protocol
 
-Revision 3 (Draft 4), 2023-08-22
+Revision 3 (Draft 5), 2023-10-06
 
 Christoffer Carlsson (editor)
 
@@ -8,11 +8,11 @@ Christoffer Carlsson (editor)
 
 - [1. Introduction](#1-introduction)
 - [2. Preliminaries](#2-preliminaries)
-  - [2.1. External functions](#21-external-functions)
-  - [2.2. Roles](#22-roles)
-  - [2.3. Keys](#23-keys)
-  - [2.4. Message indexing](#24-message-indexing)
-  - [2.5. State variables](#25-state-variables)
+  - [2.1. External functions](#22-external-functions)
+  - [2.2. Roles](#23-roles)
+  - [2.3. Keys](#24-keys)
+  - [2.4. Message indexing](#25-message-indexing)
+  - [2.5. State variables](#26-state-variables)
 - [3. The Autograph protocol](#3-the-autograph-protocol)
   - [3.1. Initialization](#31-initialization)
   - [3.2. Key exchange](#32-key-exchange)
@@ -49,18 +49,19 @@ Autograph provides cryptographic deniability and forward secrecy.
 
 ## 2. Preliminaries
 
-### 2.1 External functions
+### 2.1. External functions
 
 Autograph requires defining the following functions:
 
 - **CONCAT(X, Y)** returns the concatenation of byte sequences **X** and **Y**.
-- **ENCRYPT(K, N, M)** returns the ciphertext of the ChaCha20-Poly1305
+- **ENCRYPT(K, M)** returns the ciphertext of the ChaCha20-Poly1305
   \[[1](#7-references)\] encryption of plaintext **M** with the 256-bit key
-  **K**. The nonce **N** is a 64-bit big-endian unsigned integer padded on the
-  left with 4 zero-filled bytes. The 128-bit authentication tag is appended to
-  the ciphertext.
-- **DECRYPT(K, N, C)** returns plaintext of the ChaCha20-Poly1305 decryption of
-  ciphertext **C** with the key **K** and nonce **N**.
+  **K**. The nonce is 12 zero-filled bytes. The 128-bit authentication tag is
+  appended to the ciphertext. Prior to encrypting, the plaintext M is padded to
+  a block size of 16 bytes using the ISO/IEC 7816-4 padding algorithm.
+- **DECRYPT(K, C)** returns plaintext of the ChaCha20-Poly1305 decryption of
+  ciphertext **C** with the key **K** and nonce **N**. The plaintext padding is
+  removed following a successful decryption.
 - **DH(K1, K2)** returns 32 bytes of shared secret output from the X25519
   \[[2](#7-references)\] Elliptic Curve Diffie-Hellman (ECDH)
   \[[3](#7-references)\] function involving the private key **K1** and the
@@ -78,12 +79,15 @@ Autograph requires defining the following functions:
   - Input keying material = The byte sequence **KM**.
   - Salt = A zero-filled byte sequence with the same length as the output of
     SHA-512 (64 bytes).
-  - Info = An 8-bit unsigned integer **C** representing the context for the
-    derived key material.
+  - Info = A 64-bit big-endian unsigned integer **C** representing the context
+    for the derived key material.
 - **HASH(M, N)** returns 64 bytes of SHA-512 output produced by iteratively
   hashing the byte sequence **M** **N** times.
 
-### 2.2 Roles
+  In the Python code that follows, the _DECRYPT()_ function returns _None_ if
+  decryption fails.
+
+### 2.2. Roles
 
 The Autograph protocol involves two parties. The protocol allows each party to
 send encrypted messages to the other party. The protocol also allows each party
@@ -100,7 +104,7 @@ during the key exchange.
 To simplify description this document will use the role **Alice** to refer to
 the initiator, and the role **Bob** to refer to the responder.
 
-### 2.3 Keys
+### 2.3. Keys
 
 Autograph will use the following elliptic curve key pairs:
 
@@ -126,7 +130,7 @@ Autograph will use the following symmetric secret keys:
 
 Secret keys will be 32 bytes long.
 
-### 2.4 Message indexing
+### 2.4. Message indexing
 
 Each message is indexed by a 64-bit big-endian unsigned integer N (N<sub>A</sub>
 for Alice, N<sub>B</sub> for Bob). The index is one-based. N is increased by 1
@@ -135,25 +139,27 @@ second message is assigned index 2, the third message 3, and so on:
 
 N<sub>1</sub> = 1, N<sub>2</sub> = 2, N<sub>3</sub> = 3 ... N<sub>i</sub> = i
 
-### 2.5 State variables
+### 2.5. State variables
 
 Each party tracks the following state variables:
 
-| Name | Definition                                        |
-| :--- | :------------------------------------------------ |
-| IK   | The other party's identity public key             |
-| EK   | The other party's ephemeral public key            |
-| SKs  | Secret key for sending                            |
-| SKr  | Secret key for receiving                          |
-| Ns   | Message index for sending                         |
-| T    | Transcript of identity- and ephemeral public keys |
+| Name    | Definition                                                         |
+| :------ | :----------------------------------------------------------------- |
+| IK      | The other party's identity public key                              |
+| EK      | The other party's ephemeral public key                             |
+| SKs     | Secret key for sending                                             |
+| SKr     | Secret key for receiving                                           |
+| Ns      | Message index for sending                                          |
+| Nr      | Message index for receiving                                        |
+| T       | Transcript of identity- and ephemeral public keys                  |
+| SKIPPED | Dictionary of skipped-over message keys, indexed by message number |
 
 In the Python code that follows, the state variables are accessed as members of
 a **state** object.
 
 ## 3. The Autograph protocol
 
-### 3.1 Initialization
+### 3.1. Initialization
 
 To initialize a protocol run, each party calls **Init()**:
 
@@ -164,15 +170,17 @@ def Init(state):
   state.SKs = None
   state.SKr = None
   state.Ns = 0
+  state.Nr = 0
   state.T = None
+  state.SKIPPED = {}
 ```
 
-### 3.2 Key exchange
+### 3.2. Key exchange
 
 This section describes how two parties agree on two shared secret keys that will
 be used to secure their communication during this protocol run. Alice and Bob
-agree on the shared secret keys SK<sub>A</sub> and SK<sub>B</sub> by performing
-the following steps:
+agree on the initial shared secret keys SK<sub>A</sub> and SK<sub>B</sub> by
+performing the following steps:
 
 Through some mechanism, Alice obtains Bob's IK<sub>B</sub> public key and
 through some, potentially different, mechanism Bob obtains Alice's
@@ -202,7 +210,7 @@ def KeyExchangeBob(
   state.T = CONCAT(state.IK, bob_identity_public_key)
   state.T = CONCAT(state.T, state.EK)
   state.T = CONCAT(state.T, bob_ephemeral_public_key)
-  return ENCRYPT(state.SKs, 0, SIGN(bob_identity_private_key, state.T))
+  return ENCRYPT(state.SKs, SIGN(bob_identity_private_key, state.T))
 ```
 
 Bob deletes his EK<sub>B</sub> private key. He then sends his EK<sub>B</sub>
@@ -230,7 +238,7 @@ def KeyExchangeAlice(
   state.T = CONCAT(alice_identity_public_key, state.IK)
   state.T = CONCAT(state.T, alice_ephemeral_public_key)
   state.T = CONCAT(state.T, state.EK)
-  return ENCRYPT(state.SKs, 0, SIGN(alice_identity_private_key, state.T))
+  return ENCRYPT(state.SKs, SIGN(alice_identity_private_key, state.T))
 ```
 
 Alice deletes her EK<sub>A</sub> private key. She then sends H<sub>A</sub> to
@@ -238,7 +246,10 @@ Bob and calls _VerifyKeyExchange()_ with H<sub>B</sub>:
 
 ```python
 def VerifyKeyExchange(state, h):
-  return VERIFY(state.IK, DECRYPT(state.SKr, 0, h), state.T)
+  sig = DECRYPT(state.SKr, h)
+  if sig == None:
+    return False
+  return VERIFY(state.IK, sig, state.T)
 ```
 
 If the verification fails, Alice aborts the protocol.
@@ -255,7 +266,7 @@ combined with the successful verification of H<sub>A</sub> and H<sub>B</sub>
 authenticates the key exchange and certifies that both Alice and Bob are in
 control of their IK and EK private keys.
 
-### 3.3 Out-of-band verification
+### 3.3. Out-of-band verification
 
 This section describes how two parties can manually verify each other's identity
 keys to prevent man-in-the-middle attacks by calculating a safety number. Alice
@@ -276,8 +287,10 @@ def SafetyNumber(state, identity_public_key):
 def CalculateFingerprint(identity_public_key):
   digest = HASH(identity_public_key, 5200)
   chunks = [digest[i:i+5] for i in range(0, 30, 5)]
-  encoded_chunks = [EncodeChunk(chunk) for chunk in chunks]
-  return CONCAT(encoded_chunks)
+  fingerprint = None
+  for chunk in chunks:
+    fingerprint = CONCAT(fingerprint, EncodeChunk(chunk))
+  return fingerprint
 
 def EncodeChunk(chunk):
   a, b, c, d, e = chunk
@@ -295,7 +308,7 @@ SN<sub>B</sub> out-of-band. If they don't match both parties abort the protocol.
 If the safety numbers match Alice and Bob have successfully verified each
 other's identity keys.
 
-### 3.4 Encrypted messaging
+### 3.4. Encrypted messaging
 
 This section describes how two parties sends encrypted messages to each other.
 The receiving party is able to decrypt the messages and verify that they
@@ -304,8 +317,8 @@ transit. Alice and Bob exchange encrypted messages with each other by performing
 the following steps:
 
 Alice and Bob performs a key exchange as described in
-[Section 3.2](#32-key-exchange). Optionally, they also perform an out-of-band
-verification as described in [Section 3.3](#33-out-of-band-verification).
+[Section 3.2](#32-key-exchange) or an out-of-band verification as described in
+[Section 3.3](#33-out-of-band-verification).
 
 For each message that Alice sends to Bob the following steps are performed:
 
@@ -316,7 +329,8 @@ producing the message M<sub>N<sub>A</sub></sub>:
 ```python
 def EncryptMessage(state, d):
   state.Ns += 1
-  return CONCAT(state.Ns, ENCRYPT(state.SKs, state.Ns, d))
+  state.SKs = KDF(state.SKs, state.Ns)
+  return ENCRYPT(state.SKs, d)
 ```
 
 Alice sends M<sub>N<sub>A</sub></sub> to Bob.
@@ -326,7 +340,27 @@ _DecryptMessage()_ with M<sub>N<sub>A</sub></sub>:
 
 ```python
 def DecryptMessage(state, m):
-  return DECRYPT(state.SKr, m[:8], m[8:])
+  n, plaintext = TrySkippedMessageKeys(state, m)
+  if plaintext != None:
+    return n, plaintext
+  while plaintext == None:
+    state.Nr += 1
+    state.SKr = KDF(state.SKr, state.Nr)
+    plaintext = DECRYPT(state.SKr, m)
+    if plaintext == None:
+      state.SKIPPED[state.Nr] = state.SKr
+    if len(state.SKIPPED) > 1000:
+      del state.SKIPPED
+      return 0, None
+  return state.Nr, plaintext
+
+def TrySkippedMessageKeys(state, m):
+  for n, sk in state.SKIPPED.items():
+    plaintext = DECRYPT(sk, m)
+    if plaintext != None:
+      del state.SKIPPED[n]
+      return n, plaintext
+  return 0, None
 ```
 
 If the decryption fails, Bob aborts the protocol.
@@ -338,16 +372,16 @@ with in transit.
 By repeating the above steps, Bob can send encrypted messages back to Alice
 using the SK<sub>B</sub> secret key.
 
-### 3.5 Certifying ownership
+### 3.5. Certifying ownership
 
 This section describes how one party can certifies the ownership of another
 party's IK identity private key and optionally some data D.
 
 Alice and Bob performs a key exchange as described in
-[Section 3.2](#32-key-exchange). Optionally, they also perform an out-of-band
-verification as described in [Section 3.3](#33-out-of-band-verification).
+[Section 3.2](#32-key-exchange) or an out-of-band verification as described in
+[Section 3.3](#33-out-of-band-verification).
 
-#### 3.5.1 Certifying data
+#### 3.5.1. Certifying data
 
 Upon receiving some message M<sub>N<sub>A</sub></sub> from Alice as described in
 [Section 3.4](#34-encrypted-messaging), Bob can choose to certify Alice's
@@ -370,7 +404,7 @@ her IK<sub>A</sub> private key and the plaintext D<sub>N<sub>A</sub></sub>.
 By repeating the above steps, Alice can certify Bob's ownership of some
 plaintext D<sub>N<sub>B</sub></sub>.
 
-#### 3.5.2 Certifying identity
+#### 3.5.2. Certifying identity
 
 Bob can choose to certify Alice's ownership of her IK<sub>A</sub> private key.
 He produces the signature C<sub>A</sub> by calling _SignIdentity()_ with his
@@ -384,7 +418,7 @@ def SignIdentity(state, identity_private_key):
 By repeating the above steps, Alice can certify Bob's ownership of his
 IK<sub>B</sub> private key.
 
-#### 3.5.3 Obtaining signatures
+#### 3.5.3. Obtaining signatures
 
 By obtaining the signatures C<sub>A</sub> and/or C<sub>N<sub>A</sub></sub>, and
 Bob's IK<sub>B</sub> public key, other parties can verify Alice's ownership in
@@ -398,16 +432,16 @@ they obtains for a given protocol run is beyond the scope of this document, but
 subject to the security considerations in
 [Section 4.3](#43-trusted-party-manipulation).
 
-### 3.6 Verifying ownership
+### 3.6. Verifying ownership
 
 This section describes how a party verifies another party's ownership of their
 private identity key IK and optionally some data D.
 
 Alice and Bob performs a key exchange as described in
-[Section 3.2](#32-key-exchange). Optionally, they also perform an out-of-band
-verification as described in [Section 3.3](#33-out-of-band-verification).
+[Section 3.2](#32-key-exchange) or an out-of-band verification as described in
+[Section 3.3](#33-out-of-band-verification).
 
-#### 3.6.1 Verifying data
+#### 3.6.1. Verifying data
 
 Bob can choose to verify Alice's ownership of some plaintext
 D<sub>N<sub>A</sub></sub> by performing the following steps:
@@ -444,7 +478,7 @@ verified Alice's ownership of the plaintext D<sub>N<sub>A</sub></sub>.
 By repeating the above steps, Alice can verify Bob's ownership of some plaintext
 D<sub>N<sub>B</sub></sub>.
 
-#### 3.6.2 Verifying identity
+#### 3.6.2. Verifying identity
 
 Bob can choose to verify Alice's ownership of her IK<sub>A</sub> private key by
 performing the following steps:
@@ -475,7 +509,7 @@ IK<sub>B</sub> private key.
 
 ## 4. Security considerations
 
-### 4.1 Key compromise
+### 4.1. Key compromise
 
 If a party's long-term identity private key IK is compromised, an attacker may
 impersonate that party to others.
@@ -485,14 +519,14 @@ run, an attacker may derive SK and thereby have the ability to tamper with the
 contents of the encrypted messages M being sent between the two parties involved
 in that protocol run.
 
-### 4.2 Out-of-band verification
+### 4.2. Out-of-band verification
 
 If an out-of-band verification as described in
 [Section 3.3](#33-out-of-band-verification) is not performed, the parties will
 have no cryptographic guarantee as to who they are communicating with, which may
 enable man-in-the-middle attacks.
 
-### 4.3 Trusted party manipulation
+### 4.3. Trusted party manipulation
 
 If a malicious party is able to manipulate the mechanism through which another
 party obtains the IK public keys and certifying signatures C from trusted third
