@@ -1,14 +1,14 @@
 import { autograph_sign_subject } from './clib'
 import { SignFunction, SignResult } from '../types'
-import { createSignatureBytes } from './utils'
+import { SIGNATURE_SIZE, createSignatureBytes } from './utils'
 
 const createErrorSignResult = (): SignResult => ({
   success: false,
-  signature: new Uint8Array(64)
+  signature: new Uint8Array(SIGNATURE_SIZE)
 })
 
 const ensureSignResult = (result: SignResult): SignResult => {
-  if (result.signature.byteLength !== 64) {
+  if (result.signature.byteLength !== SIGNATURE_SIZE) {
     return createErrorSignResult()
   }
   return result

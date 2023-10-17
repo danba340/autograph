@@ -1,10 +1,12 @@
 #include "key_pair.h"
 
+#include "sizes.h"
+
 namespace Autograph {
 
 KeyPair createKeyPair() {
-  Bytes privateKey(32);
-  Bytes publicKey(32);
+  Bytes privateKey(PRIVATE_KEY_SIZE);
+  Bytes publicKey(PUBLIC_KEY_SIZE);
   KeyPair keyPair = {privateKey, publicKey};
   return keyPair;
 }

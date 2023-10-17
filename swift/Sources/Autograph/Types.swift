@@ -53,11 +53,11 @@ internal class DecryptionState {
   var skippedKeys: Bytes
 
   init(secretKey: inout Bytes) {
-    decryptIndex = createBytes(8)
-    messageIndex = createBytes(8)
-    plaintextSize = createBytes(4)
+    decryptIndex = createIndexBytes()
+    messageIndex = createIndexBytes()
+    plaintextSize = createSizeBytes()
     self.secretKey = secretKey
-    skippedKeys = createBytes(40002)
+    skippedKeys = createSkippedKeysBytes()
   }
 
   func readMessageIndex() -> UInt64 {
@@ -90,7 +90,7 @@ internal class EncryptionState {
   var secretKey: Bytes
 
   init(secretKey: inout Bytes) {
-    messageIndex = createBytes(8)
+    messageIndex = createIndexBytes()
     self.secretKey = secretKey
   }
 

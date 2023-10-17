@@ -1,6 +1,7 @@
 #include "key_exchange.h"
 
 #include "private.h"
+#include "sizes.h"
 
 namespace Autograph {
 
@@ -34,10 +35,10 @@ KeyExchangeFunction createKeyExchange(const bool isInitiator,
                                 const Bytes theirIdentityKey,
                                 const Bytes theirEphemeralKey) {
     auto safeSign = createSafeSign(sign);
-    Bytes transcript(128);
-    Bytes ourSecretKey(32);
-    Bytes theirSecretKey(32);
-    Bytes handshake(96);
+    Bytes transcript(TRANSCRIPT_SIZE);
+    Bytes ourSecretKey(SECRET_KEY_SIZE);
+    Bytes theirSecretKey(SECRET_KEY_SIZE);
+    Bytes handshake(HANDSHAKE_SIZE);
     bool transcriptSuccess =
         autograph_key_exchange_transcript(
             transcript.data(), isInitiator ? 1 : 0, ourIdentityPublicKey.data(),

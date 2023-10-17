@@ -25,9 +25,9 @@ internal func createDecrypt(state: DecryptionState) -> DecryptFunction {
 
 internal func createEncrypt(state: EncryptionState) -> EncryptFunction {
   let encryptFunction: EncryptFunction = { [state] plaintext in
-    var message = createMessageBytes(plaintext.count)
+    var ciphertext = createCiphertextBytes(plaintext.count)
     let success = autograph_encrypt(
-      &message,
+      &ciphertext,
       &state.messageIndex,
       &state.secretKey,
       plaintext,
@@ -36,7 +36,7 @@ internal func createEncrypt(state: EncryptionState) -> EncryptFunction {
     return EncryptionResult(
       success: success,
       index: state.readMessageIndex(),
-      message: message
+      message: ciphertext
     )
   }
   return encryptFunction
@@ -70,7 +70,7 @@ internal func createSignIdentity(
 }
 
 private func countCertificates(_ certificates: Bytes) -> UInt32 {
-  UInt32(certificates.count / (PUBLIC_KEY_SIZE + SIGNATURE_SIZE))
+  UInt32(certificates.count) / (PUBLIC_KEY_SIZE + SIGNATURE_SIZE)
 }
 
 internal func createVerifyData(

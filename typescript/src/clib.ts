@@ -84,6 +84,12 @@ export const autograph_encrypt = (
     plaintext_size
   ) === 0
 
+export const autograph_handshake_size = () =>
+  call('autograph_handshake_size', 'number') as number
+
+export const autograph_index_size = () =>
+  call('autograph_index_size', 'number') as number
+
 export const autograph_init = async () => {
   if (!Module) {
     Module = (await wasmModule()) as EmscriptenModule
@@ -190,6 +196,12 @@ export const autograph_key_pair_identity = (
 export const autograph_plaintext_size = (ciphertext_size: number) =>
   call('autograph_plaintext_size', 'number', ciphertext_size) as number
 
+export const autograph_private_key_size = () =>
+  call('autograph_private_key_size', 'number') as number
+
+export const autograph_public_key_size = () =>
+  call('autograph_public_key_size', 'number') as number
+
 export const autograph_read_uint32 = (bytes: Uint8Array) =>
   call('autograph_read_uint32', 'number', bytes) as number
 
@@ -208,6 +220,15 @@ export const autograph_safety_number = (
     our_identity_key,
     their_identity_key
   ) === 0
+
+export const autograph_safety_number_size = () =>
+  call('autograph_safety_number_size', 'number') as number
+
+export const autograph_secret_key_size = () =>
+  call('autograph_secret_key_size', 'number') as number
+
+export const autograph_signature_size = () =>
+  call('autograph_signature_size', 'number') as number
 
 export const autograph_sign_data = (
   signature: Uint8Array,
@@ -254,6 +275,12 @@ export const autograph_sign_subject = (
     subject_size
   ) === 0
 
+export const autograph_size_size = () =>
+  call('autograph_size_size', 'number') as number
+
+export const autograph_skipped_keys_size = () =>
+  call('autograph_skipped_keys_size', 'number') as number
+
 export const autograph_subject = (
   subject: Uint8Array,
   their_public_key: Uint8Array,
@@ -268,6 +295,12 @@ export const autograph_subject = (
     data,
     data_size
   ) === 0
+
+export const autograph_subject_size = (size: number) =>
+  call('autograph_subject_size', 'number', size) as number
+
+export const autograph_transcript_size = () =>
+  call('autograph_transcript_size', 'number') as number
 
 export const autograph_verify_data = (
   their_public_key: Uint8Array,

@@ -8,8 +8,13 @@ import {
   VerifyIdentityFunction
 } from '../types'
 import {
-  createMessageBytes,
+  PUBLIC_KEY_SIZE,
+  SIGNATURE_SIZE,
+  createCiphertextBytes,
+  createIndexBytes,
   createPlaintextBytes,
+  createSizeBytes,
+  createSkippedKeysBytes,
   createSubjectBytes
 } from './utils'
 import {
@@ -23,10 +28,10 @@ import {
 } from './clib'
 
 export const createDecrypt = (theirSecretKey: Uint8Array): DecryptFunction => {
-  const messageIndex = new Uint8Array(8)
-  const decryptIndex = new Uint8Array(8)
-  const plaintextSize = new Uint8Array(4)
-  const skippedKeys = new Uint8Array(40002)
+  const messageIndex = createIndexBytes()
+  const decryptIndex = createIndexBytes()
+  const plaintextSize = createSizeBytes()
+  const skippedKeys = createSkippedKeysBytes()
   return (message: Uint8Array) => {
     const plaintext = createPlaintextBytes(message.byteLength)
     const success = autograph_decrypt(
@@ -48,11 +53,11 @@ export const createDecrypt = (theirSecretKey: Uint8Array): DecryptFunction => {
 }
 
 export const createEncrypt = (ourSecretKey: Uint8Array): EncryptFunction => {
-  const messageIndex = new Uint8Array(8)
+  const messageIndex = createIndexBytes()
   return (plaintext: Uint8Array) => {
-    const message = createMessageBytes(plaintext.byteLength)
+    const ciphertext = createCiphertextBytes(plaintext.byteLength)
     const success = autograph_encrypt(
-      message,
+      ciphertext,
       messageIndex,
       ourSecretKey,
       plaintext,
@@ -61,7 +66,7 @@ export const createEncrypt = (ourSecretKey: Uint8Array): EncryptFunction => {
     return {
       success,
       index: autograph_read_uint64(messageIndex),
-      message
+      message: ciphertext
     }
   }
 }
@@ -80,7 +85,7 @@ export const createSignIdentity =
     sign(theirPublicKey)
 
 const countCertificates = (certificates: Uint8Array) =>
-  certificates.byteLength / 96
+  certificates.byteLength / (PUBLIC_KEY_SIZE + SIGNATURE_SIZE)
 
 export const createVerifyData =
   (theirIdentityKey: Uint8Array): VerifyDataFunction =>
