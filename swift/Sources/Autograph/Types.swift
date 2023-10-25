@@ -4,8 +4,8 @@ import Foundation
 public typealias Bytes = [UInt8]
 
 public class KeyPair {
-  var privateKey: Bytes
-  var publicKey: Bytes
+  public var privateKey: Bytes
+  public var publicKey: Bytes
 
   init(privateKey: Bytes, publicKey: Bytes) {
     self.privateKey = privateKey
@@ -14,8 +14,8 @@ public class KeyPair {
 }
 
 public class KeyPairResult {
-  var success: Bool
-  var keyPair: KeyPair
+  public var success: Bool
+  public var keyPair: KeyPair
 
   init(success: Bool, keyPair: KeyPair) {
     self.success = success
@@ -24,8 +24,8 @@ public class KeyPairResult {
 }
 
 public class SignResult {
-  var success: Bool
-  var signature: Bytes
+  public var success: Bool
+  public var signature: Bytes
 
   init(success: Bool, signature: Bytes) {
     self.success = success
@@ -34,9 +34,9 @@ public class SignResult {
 }
 
 public class DecryptionResult {
-  var success: Bool
-  var index: UInt64
-  var data: Bytes
+  public var success: Bool
+  public var index: UInt64
+  public var data: Bytes
 
   init(success: Bool, index: UInt64, data: Bytes) {
     self.success = success
@@ -74,9 +74,9 @@ internal class DecryptionState {
 }
 
 public class EncryptionResult {
-  var success: Bool
-  var index: UInt64
-  var message: Bytes
+  public var success: Bool
+  public var index: UInt64
+  public var message: Bytes
 
   init(success: Bool, index: UInt64, message: Bytes) {
     self.success = success
@@ -107,8 +107,8 @@ public typealias VerifyDataFunction = (Bytes, Bytes) -> Bool
 public typealias VerifyIdentityFunction = (Bytes) -> Bool
 
 public class SafetyNumberResult {
-  var success: Bool
-  var safetyNumber: Bytes
+  public var success: Bool
+  public var safetyNumber: Bytes
 
   init(success: Bool, safetyNumber: Bytes) {
     self.success = success
@@ -119,12 +119,12 @@ public class SafetyNumberResult {
 public typealias SafetyNumberFunction = (Bytes) -> SafetyNumberResult
 
 public class Session {
-  var encrypt: EncryptFunction
-  var decrypt: DecryptFunction
-  var signData: SignDataFunction
-  var signIdentity: SignIdentityFunction
-  var verifyData: VerifyDataFunction
-  var verifyIdentity: VerifyIdentityFunction
+  public var encrypt: EncryptFunction
+  public var decrypt: DecryptFunction
+  public var signData: SignDataFunction
+  public var signIdentity: SignIdentityFunction
+  public var verifyData: VerifyDataFunction
+  public var verifyIdentity: VerifyIdentityFunction
 
   init(
     decrypt: @escaping DecryptFunction,
