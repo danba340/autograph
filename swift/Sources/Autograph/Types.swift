@@ -144,8 +144,8 @@ public class Session {
 }
 
 public class KeyExchangeVerificationResult {
-  var success: Bool
-  var session: Session
+  public var success: Bool
+  public var session: Session
 
   init(success: Bool, session: Session) {
     self.success = success
@@ -157,8 +157,8 @@ public typealias KeyExchangeVerificationFunction = (Bytes)
   -> KeyExchangeVerificationResult
 
 public class KeyExchange {
-  var handshake: Bytes
-  var verify: KeyExchangeVerificationFunction
+  public var handshake: Bytes
+  public var verify: KeyExchangeVerificationFunction
 
   init(handshake: Bytes, verify: @escaping KeyExchangeVerificationFunction) {
     self.handshake = handshake
@@ -167,8 +167,8 @@ public class KeyExchange {
 }
 
 public class KeyExchangeResult {
-  var success: Bool
-  var keyExchange: KeyExchange
+  public var success: Bool
+  public var keyExchange: KeyExchange
 
   init(success: Bool, keyExchange: KeyExchange) {
     self.success = success
@@ -182,8 +182,8 @@ public typealias KeyExchangeFunction = (inout KeyPair, Bytes, Bytes)
 public typealias SignFunction = (Bytes) -> SignResult
 
 public class Party {
-  var calculateSafetyNumber: SafetyNumberFunction
-  var performKeyExchange: KeyExchangeFunction
+  public var calculateSafetyNumber: SafetyNumberFunction
+  public var performKeyExchange: KeyExchangeFunction
 
   init(
     calculateSafetyNumber: @escaping SafetyNumberFunction,
