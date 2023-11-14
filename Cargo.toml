@@ -1,0 +1,48 @@
+[package]
+publish = false
+name = "autograph"
+description = "A Rust implementation of the Autograph protocol"
+version = "0.3.0"
+authors = ["Christoffer Carlsson <cc@christofferc.com>"]
+edition = "2021"
+keywords = [
+    "security",
+    "identity",
+    "cryptography",
+    "privacy",
+    "authentication",
+    "freedom",
+    "verification",
+    "ed25519",
+    "hkdf",
+    "x25519",
+    "chacha20-poly1305",
+    "elliptic-curves",
+    "ownership",
+    "decentralization",
+    "diffie-hellman"
+  ]
+repository = "https://github.com/christoffercarlsson/autograph"
+
+[build-dependencies]
+cmake = "0.1.50"
+
+[lib]
+name = "autograph"
+path = "rust/src/lib.rs"
+
+[[test]]
+name = "channel_test"
+path = "rust/tests/channel.rs"
+
+[[test]]
+name = "key_exchange_test"
+path = "rust/tests/key_exchange.rs"
+
+[[test]]
+name = "key_pair_test"
+path = "rust/tests/key_pair.rs"
+
+[[test]]
+name = "safety_number_test"
+path = "rust/tests/safety_number.rs"
