@@ -1,3 +1,4 @@
+import Channel from './channel'
 import {
   autograph_ciphertext_size,
   autograph_decrypt,
@@ -31,34 +32,39 @@ import {
   autograph_verify_data,
   autograph_verify_identity
 } from './clib'
+import {
+  AutographError,
+  ChannelUnestablishedError,
+  ChannelAlreadyEstablishedError,
+  ChannelUninitializedError,
+  ChannelAlreadyInitializedError,
+  DecryptionError,
+  EncryptionError,
+  InitializationError,
+  KeyExchangeError,
+  KeyExchangeVerificationError,
+  KeyPairGenerationError,
+  SafetyNumberCalculationError,
+  SigningError
+} from './error'
 import { generateIdentityKeyPair, generateEphemeralKeyPair } from './key-pair'
-import createParty from './party'
-import { createSign } from './sign'
-import { KeyPair, SignFunction } from '../types'
-
-const ensureParty = (
-  isInitiator: boolean,
-  a: KeyPair | SignFunction,
-  b?: Uint8Array
-) => {
-  const keyPair = a as KeyPair
-  if (ArrayBuffer.isView(keyPair.privateKey)) {
-    return createParty(
-      isInitiator,
-      createSign(keyPair.privateKey),
-      keyPair.publicKey
-    )
-  }
-  return createParty(isInitiator, a as SignFunction, b)
-}
-
-const createInitiator = (a: KeyPair | SignFunction, b?: Uint8Array) =>
-  ensureParty(true, a, b)
-
-const createResponder = (a: KeyPair | SignFunction, b?: Uint8Array) =>
-  ensureParty(false, a, b)
+import calculateSafetyNumber from './safety-number'
+import createSign from './sign'
 
 export {
+  AutographError,
+  ChannelUnestablishedError,
+  ChannelAlreadyEstablishedError,
+  ChannelUninitializedError,
+  ChannelAlreadyInitializedError,
+  DecryptionError,
+  EncryptionError,
+  InitializationError,
+  KeyExchangeError,
+  KeyExchangeVerificationError,
+  KeyPairGenerationError,
+  SafetyNumberCalculationError,
+  SigningError,
   autograph_ciphertext_size,
   autograph_decrypt,
   autograph_encrypt,
@@ -90,10 +96,9 @@ export {
   autograph_transcript_size,
   autograph_verify_data,
   autograph_verify_identity,
-  createInitiator,
-  createResponder,
+  calculateSafetyNumber,
+  Channel,
   createSign,
   generateIdentityKeyPair,
-  generateEphemeralKeyPair,
-  autograph_init as init
+  generateEphemeralKeyPair
 }

@@ -2,17 +2,16 @@
 
 extern crate alloc;
 
-mod autograph;
 mod channel;
 mod clib;
-mod key_exchange;
+mod error;
 mod key_pair;
 mod safety_number;
 mod sign;
-mod types;
 mod utils;
 
-pub use autograph::Autograph;
 pub use channel::Channel;
 pub use clib::*;
-pub use types::*;
+pub use key_pair::{generate_ephemeral_key_pair, generate_identity_key_pair, KeyPair};
+pub use safety_number::calculate_safety_number;
+pub use sign::{create_sign, SignFunction};
