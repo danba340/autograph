@@ -31,7 +31,8 @@ swift_module_map() {
 }
 
 build_headers() {
-    cp -R "${SOURCE_INCLUDE_DIR}" "${1}"
+    mkdir "${1}"
+    cp "${SOURCE_INCLUDE_DIR}/autograph.h" "${1}/autograph.h"
     swift_module_map > "${1}/module.modulemap"
 }
 
