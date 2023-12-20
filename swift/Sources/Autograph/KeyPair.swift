@@ -11,40 +11,34 @@ public class KeyPair {
   }
 }
 
-public func generateEphemeralKeyPair() throws -> KeyPair {
-  if autograph_init() < 0 {
-    throw AutographError.initialization
-  }
-  let keyPair = KeyPair(
-    privateKey: createPrivateKeyBytes(),
-    publicKey: createPublicKeyBytes()
+private func createKeyPair() -> KeyPair {
+  KeyPair(
+    privateKey: createPrivateKeyBytes(), publicKey: createPublicKeyBytes()
   )
+}
+
+public func generateEphemeralKeyPair() throws -> KeyPair {
+  let keyPair = createKeyPair()
   let success =
-    autograph_key_pair_ephemeral(
+    autograph_ephemeral_key_pair(
       &keyPair.privateKey,
       &keyPair.publicKey
-    ) == 0
+    ) == 1
   if !success {
-    throw AutographError.keyPairGeneration
+    throw AutographError.keyPair
   }
   return keyPair
 }
 
 public func generateIdentityKeyPair() throws -> KeyPair {
-  if autograph_init() < 0 {
-    throw AutographError.initialization
-  }
-  let keyPair = KeyPair(
-    privateKey: createPrivateKeyBytes(),
-    publicKey: createPublicKeyBytes()
-  )
+  let keyPair = createKeyPair()
   let success =
-    autograph_key_pair_identity(
+    autograph_identity_key_pair(
       &keyPair.privateKey,
       &keyPair.publicKey
-    ) == 0
+    ) == 1
   if !success {
-    throw AutographError.keyPairGeneration
+    throw AutographError.keyPair
   }
   return keyPair
 }

@@ -1,16 +1,12 @@
 import Foundation
 
 public enum AutographError: Error {
-  case channelAlreadyEstablished
-  case channelAlreadyInitialized
-  case channelUnestablished
-  case channelUninitialized
+  case certification
   case decryption
   case encryption
-  case initialization
   case keyExchange
-  case keyExchangeVerification
-  case keyPairGeneration
-  case safetyNumberCalculation
-  case signing
+  case keyPair
+  case safetyNumber
+  case session
+  case verification
 }
