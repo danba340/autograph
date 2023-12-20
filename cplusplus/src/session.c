@@ -48,6 +48,7 @@ uint8_t autograph_open_session(uint8_t *state, uint8_t *secret_key,
   uint8_t pad_result =
       autograph_unpad(unpadded_size, plaintext, plaintext_size);
   autograph_write_zero(secret_key, 0, 32);
+  autograph_init(state);
   if (decrypt_result && pad_result) {
     autograph_write(state, 0, plaintext, 0,
                     autograph_read_uint32(unpadded_size, 0));
