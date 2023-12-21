@@ -256,6 +256,14 @@ final class ChannelTests: XCTestCase {
         XCTAssertTrue(bobVerified)
     }
 
+    // Should calculate safety numbers correctly
+    func testSafetyNumber() throws {
+        let aliceSafetyNumber = try a.calculateSafetyNumber()
+        let bobSafetyNumber = try b.calculateSafetyNumber()
+        XCTAssertEqual(aliceSafetyNumber, safetyNumber)
+        XCTAssertEqual(bobSafetyNumber, safetyNumber)
+    }
+
     // Should allow Alice to send encrypted data to Bob
     func testAliceMessageToBob() throws {
         let (encryptIndex, message) = try a.encrypt(plaintext: data)
