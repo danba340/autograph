@@ -1,15 +1,11 @@
 #[derive(Debug)]
 pub enum Error {
-    ChannelAlreadyEstablished,
-    ChannelAlreadyInitialized,
-    ChannelUnestablished,
-    ChannelUninitialized,
+    Certification,
     Decryption,
     Encryption,
-    Initialization,
     KeyExchange,
-    KeyExchangeVerification,
-    KeyPairGeneration,
-    SafetyNumberCalculation,
-    Signing,
+    KeyPair,
+    SafetyNumber,
+    Session,
+    Verification,
 }
