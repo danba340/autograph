@@ -6,10 +6,6 @@ let package = Package(
     name: "Autograph",
     products: [
         .library(
-            name: "Clibautograph",
-            targets: ["Clibautograph"]
-        ),
-        .library(
             name: "Autograph",
             targets: ["Autograph"]
         ),
