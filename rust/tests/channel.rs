@@ -1,7 +1,3 @@
-extern crate alloc;
-
-use alloc::vec::Vec;
-
 use autograph::{create_state, Channel, KeyPair};
 
 #[test]
@@ -210,8 +206,8 @@ fn test_key_exchange(
     let alice_verified =
         a.verify_key_exchange(&alice_ephemeral_key_pair.public_key, &handshake_bob);
     let bob_verified = b.verify_key_exchange(&bob_ephemeral_key_pair.public_key, &handshake_alice);
-    assert_eq!(handshake_alice, alice_handshake.to_vec());
-    assert_eq!(handshake_bob, bob_handshake.to_vec());
+    assert_eq!(handshake_alice, alice_handshake);
+    assert_eq!(handshake_bob, bob_handshake);
     assert!(alice_verified);
     assert!(bob_verified);
 }
@@ -344,4 +340,31 @@ fn test_out_of_order_messages(a: &mut Channel, b: &mut Channel) {
     assert_eq!(plaintext2, data2);
     assert_eq!(plaintext3, data3);
     assert_eq!(plaintext4, data4);
+}
+
+// Should handle sessions correctly
+#[test]
+fn test_session() {
+    let blank_state = create_state();
+    let mut initial_state: Vec<u8> = vec![
+        52, 0, 150, 226, 138, 192, 249, 231, 126, 199, 95, 240, 106, 17, 150, 95, 221, 247, 33,
+        201, 19, 62, 4, 135, 169, 104, 128, 218, 250, 251, 243, 190, 177, 67, 45, 125, 158, 190,
+        181, 222, 101, 149, 224, 200, 223, 235, 222, 110, 67, 61, 200, 62, 29, 37, 150, 228, 137,
+        114, 143, 77, 115, 135, 143, 103, 213, 153, 88, 124, 93, 136, 104, 111, 196, 208, 155, 156,
+        165, 31, 120, 186, 79, 205, 247, 175, 243, 184, 114, 80, 152, 243, 24, 225, 91, 220, 141,
+        150, 0, 0, 0, 0, 19, 204, 155, 9, 177, 55, 134, 149, 159, 211, 24, 84, 231, 36, 192, 217,
+        101, 73, 6, 231, 177, 120, 184, 52, 93, 155, 35, 35, 16, 40, 135, 52, 0, 0, 0, 0, 229, 152,
+        150, 64, 86, 142, 184, 73, 69, 27, 43, 178, 92, 235, 209, 83, 247, 201, 107, 101, 30, 171,
+        111, 124, 61, 79, 74, 85, 28, 31, 186, 140,
+    ];
+    initial_state.resize(9348, 0);
+    let mut first_state = initial_state.clone();
+    let mut second_state = create_state();
+    let mut first = Channel::new(&mut first_state);
+    let mut second = Channel::new(&mut second_state);
+    let (mut key, ciphertext) = first.close().unwrap();
+    assert_eq!(first_state, blank_state);
+    let success = second.open(&mut key, &ciphertext);
+    assert!(success);
+    assert_eq!(second_state, initial_state)
 }
