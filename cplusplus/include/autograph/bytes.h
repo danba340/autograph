@@ -31,31 +31,31 @@ namespace Autograph {
 
 using Bytes = std::vector<uint8_t>;
 
-Bytes createCiphertextBytes(const Bytes &plaintext);
+Bytes createCiphertext(const Bytes &plaintext);
 
-Bytes createHandshakeBytes();
+Bytes createHandshake();
 
-Bytes createIndexBytes();
+Bytes createIndex();
 
-Bytes createPlaintextBytes(const Bytes &ciphertext);
+Bytes createPlaintext(const Bytes &ciphertext);
 
-Bytes createPrivateKeyBytes();
+Bytes createPrivateKey();
 
-Bytes createPublicKeyBytes();
+Bytes createPublicKey();
 
-Bytes createSafetyNumberBytes();
+Bytes createSafetyNumber();
 
-Bytes createSecretKeyBytes();
+Bytes createSecretKey();
 
-Bytes createSessionBytes(const Bytes &state);
+Bytes createSession(const Bytes &state);
 
-Bytes createSignatureBytes();
+Bytes createSignature();
 
-Bytes createSizeBytes();
+Bytes createSize();
 
 uint32_t readIndex(const Bytes &bytes);
 
-void resizeBytes(Bytes &bytes, const Bytes &sizeBytes);
+void resize(Bytes &bytes, const Bytes &sizeBytes);
 
 }  // namespace Autograph
 

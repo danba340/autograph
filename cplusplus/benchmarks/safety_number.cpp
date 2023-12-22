@@ -20,7 +20,7 @@ static void safety_number(benchmark::State& benchmarkState) {
       6,   231, 177, 120, 184, 52,  93,  155, 35,  35,  16,  40,  135, 52};
 
   Autograph::Bytes safetyNumber(64);
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   std::copy(safetyNumberState.begin(), safetyNumberState.end(), state.begin());
 
   for (auto _ : benchmarkState) {

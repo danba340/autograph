@@ -131,8 +131,8 @@ TEST_CASE("Channel", "[channel]") {
        215, 158, 210, 177, 243, 28,  138, 52, 91,  236, 55,
        30,  117, 10,  125, 87,  232, 80,  6,  232, 93}};
 
-  auto aliceState = Autograph::createStateBytes();
-  auto bobState = Autograph::createStateBytes();
+  auto aliceState = Autograph::createState();
+  auto bobState = Autograph::createState();
 
   Autograph::Channel a(aliceState);
   Autograph::Channel b(bobState);
@@ -278,7 +278,7 @@ TEST_CASE("Channel", "[channel]") {
   }
 
   SECTION("should handle sessions correctly") {
-    auto previousState = Autograph::createStateBytes();
+    auto previousState = Autograph::createState();
     std::copy(bobState.begin(), bobState.end(), previousState.begin());
     auto [closeSuccess, key, ciphertext] = b.close();
     auto openSuccess = a.open(key, ciphertext);

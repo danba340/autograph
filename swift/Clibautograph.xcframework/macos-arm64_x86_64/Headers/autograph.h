@@ -120,7 +120,7 @@ class Channel {
   Bytes &state;
 };
 
-Bytes createStateBytes();
+Bytes createState();
 
 tuple<bool, KeyPair> generateEphemeralKeyPair();
 

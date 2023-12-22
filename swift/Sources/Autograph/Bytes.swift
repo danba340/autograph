@@ -15,54 +15,54 @@ private func createBytes(_ size: UInt32) -> Bytes {
     createBytes(Int(size))
 }
 
-func createCiphertextBytes(_ plaintext: Bytes) -> Bytes {
+func createCiphertext(_ plaintext: Bytes) -> Bytes {
     let size = autograph_ciphertext_size(UInt32(plaintext.count))
     return createBytes(size)
 }
 
-func createHandshakeBytes() -> Bytes {
+func createHandshake() -> Bytes {
     createBytes(80)
 }
 
-func createIndexBytes() -> Bytes {
+func createIndex() -> Bytes {
     createBytes(4)
 }
 
-func createPlaintextBytes(_ ciphertext: Bytes) -> Bytes {
+func createPlaintext(_ ciphertext: Bytes) -> Bytes {
     let size = autograph_plaintext_size(UInt32(ciphertext.count))
     return createBytes(size)
 }
 
-func createPrivateKeyBytes() -> Bytes {
+func createPrivateKey() -> Bytes {
     createBytes(32)
 }
 
-func createPublicKeyBytes() -> Bytes {
+func createPublicKey() -> Bytes {
     createBytes(32)
 }
 
-func createSafetyNumberBytes() -> Bytes {
+func createSafetyNumber() -> Bytes {
     createBytes(64)
 }
 
-func createSecretKeyBytes() -> Bytes {
+func createSecretKey() -> Bytes {
     createBytes(32)
 }
 
-func createSessionBytes(_ state: Bytes) -> Bytes {
+func createSession(_ state: Bytes) -> Bytes {
     let size = autograph_session_size(state)
     return createBytes(size)
 }
 
-func createSignatureBytes() -> Bytes {
+func createSignature() -> Bytes {
     createBytes(64)
 }
 
-func createSizeBytes() -> Bytes {
+func createSize() -> Bytes {
     createBytes(4)
 }
 
-func createStateBytes() -> Bytes {
+func createState() -> Bytes {
     createBytes(9348)
 }
 
@@ -70,7 +70,7 @@ func readIndex(_ bytes: Bytes) -> UInt32 {
     autograph_read_index(bytes)
 }
 
-func resizeBytes(
+func resize(
     _ bytes: Bytes,
     _ sizeBytes: Bytes
 ) -> Bytes {

@@ -8,42 +8,42 @@ import {
 
 const createBytes = (size: number) => new Uint8Array(size)
 
-export const createCiphertextBytes = (plaintext: Uint8Array) => {
+export const createCiphertext = (plaintext: Uint8Array) => {
   const size = ciphertext_size(plaintext.byteLength)
   return createBytes(size)
 }
 
-export const createHandshakeBytes = () => createBytes(80)
+export const createHandshake = () => createBytes(80)
 
-export const createIndexBytes = () => createBytes(4)
+export const createIndex = () => createBytes(4)
 
-export const createPlaintextBytes = (ciphertext: Uint8Array) => {
+export const createPlaintext = (ciphertext: Uint8Array) => {
   const size = plaintext_size(ciphertext.byteLength)
   return createBytes(size)
 }
 
-export const createPrivateKeyBytes = () => createBytes(32)
+export const createPrivateKey = () => createBytes(32)
 
-export const createPublicKeyBytes = () => createBytes(32)
+export const createPublicKey = () => createBytes(32)
 
-export const createSafetyNumberBytes = () => createBytes(64)
+export const createSafetyNumber = () => createBytes(64)
 
-export const createSecretKeyBytes = () => createBytes(32)
+export const createSecretKey = () => createBytes(32)
 
-export const createSessionBytes = (state: Uint8Array) => {
+export const createSession = (state: Uint8Array) => {
   const size = session_size(state)
   return createBytes(size)
 }
 
-export const createSignatureBytes = () => createBytes(64)
+export const createSignature = () => createBytes(64)
 
-export const createSizeBytes = () => createBytes(4)
+export const createSize = () => createBytes(4)
 
-export const createStateBytes = () => createBytes(9348)
+export const createState = () => createBytes(9348)
 
 export const readIndex = (bytes: Uint8Array) => read_index(bytes)
 
-export const resizeBytes = (bytes: Uint8Array, sizeBytes: Uint8Array) => {
+export const resize = (bytes: Uint8Array, sizeBytes: Uint8Array) => {
   const size = read_size(sizeBytes)
   return bytes.subarray(0, size)
 }

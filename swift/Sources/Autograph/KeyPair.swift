@@ -13,7 +13,7 @@ public class KeyPair {
 
 private func createKeyPair() -> KeyPair {
     KeyPair(
-        privateKey: createPrivateKeyBytes(), publicKey: createPublicKeyBytes()
+        privateKey: createPrivateKey(), publicKey: createPublicKey()
     )
 }
 

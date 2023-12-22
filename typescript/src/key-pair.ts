@@ -1,10 +1,10 @@
 import { KeyPair } from '../../types'
-import { createPrivateKeyBytes, createPublicKeyBytes } from './bytes'
+import { createPrivateKey, createPublicKey } from './bytes'
 import { ephemeral_key_pair, identity_key_pair, ready } from './clib'
 
 const createKeyPair = () => ({
-  privateKey: createPrivateKeyBytes(),
-  publicKey: createPublicKeyBytes()
+  privateKey: createPrivateKey(),
+  publicKey: createPublicKey()
 })
 
 export const generateEphemeralKeyPair = async (): Promise<

@@ -1,17 +1,17 @@
 import { KeyPair } from '../../types'
 import {
-  createCiphertextBytes,
-  createHandshakeBytes,
-  createIndexBytes,
-  createPlaintextBytes,
-  createSafetyNumberBytes,
-  createSecretKeyBytes,
-  createSessionBytes,
-  createSignatureBytes,
-  createSizeBytes,
-  createStateBytes,
+  createCiphertext,
+  createHandshake,
+  createIndex,
+  createPlaintext,
+  createSafetyNumber,
+  createSecretKey,
+  createSession,
+  createSignature,
+  createSize,
+  createState,
   readIndex,
-  resizeBytes
+  resize
 } from './bytes'
 import {
   certify_data,
@@ -32,38 +32,38 @@ export default class Channel {
   private state: Uint8Array
 
   constructor() {
-    this.state = createStateBytes()
+    this.state = createState()
   }
 
   calculateSafetyNumber(): [boolean, Uint8Array] {
-    const safetyNumber = createSafetyNumberBytes()
+    const safetyNumber = createSafetyNumber()
     const success = safety_number(safetyNumber, this.state)
     return [!!success, safetyNumber]
   }
 
   certifyData(data: Uint8Array): [boolean, Uint8Array] {
-    const signature = createSignatureBytes()
+    const signature = createSignature()
     const success = certify_data(signature, this.state, data, data.byteLength)
     return [!!success, signature]
   }
 
   certifyIdentity(): [boolean, Uint8Array] {
-    const signature = createSignatureBytes()
+    const signature = createSignature()
     const success = certify_identity(signature, this.state)
     return [!!success, signature]
   }
 
   close(): [boolean, Uint8Array, Uint8Array] {
-    const key = createSecretKeyBytes()
-    const ciphertext = createSessionBytes(this.state)
+    const key = createSecretKey()
+    const ciphertext = createSession(this.state)
     const success = close_session(key, ciphertext, this.state)
     return [!!success, key, ciphertext]
   }
 
   decrypt(message: Uint8Array): [boolean, number, Uint8Array] {
-    const plaintext = createPlaintextBytes(message)
-    const index = createIndexBytes()
-    const size = createSizeBytes()
+    const plaintext = createPlaintext(message)
+    const index = createIndex()
+    const size = createSize()
     const success = decrypt_message(
       plaintext,
       size,
@@ -72,12 +72,12 @@ export default class Channel {
       message,
       message.byteLength
     )
-    return [!!success, readIndex(index), resizeBytes(plaintext, size)]
+    return [!!success, readIndex(index), resize(plaintext, size)]
   }
 
   encrypt(plaintext: Uint8Array): [boolean, number, Uint8Array] {
-    const ciphertext = createCiphertextBytes(plaintext)
-    const index = createIndexBytes()
+    const ciphertext = createCiphertext(plaintext)
+    const index = createIndex()
     const success = encrypt_message(
       ciphertext,
       index,
@@ -106,7 +106,7 @@ export default class Channel {
     theirEphemeralKey: Uint8Array
   ): Promise<[boolean, Uint8Array]> {
     await ready()
-    const handshake = createHandshakeBytes()
+    const handshake = createHandshake()
     const success = key_exchange(
       handshake,
       this.state,

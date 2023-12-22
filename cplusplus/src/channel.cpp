@@ -6,48 +6,48 @@ namespace Autograph {
 Channel::Channel(Bytes &state) : state(state) {}
 
 tuple<bool, Bytes> Channel::calculateSafetyNumber() const {
-  auto safetyNumber = createSafetyNumberBytes();
+  auto safetyNumber = createSafetyNumber();
   bool success = autograph_safety_number(safetyNumber.data(), state.data());
   return make_tuple(success, safetyNumber);
 }
 
 tuple<bool, Bytes> Channel::certifyData(const Bytes &data) const {
-  auto signature = createSignatureBytes();
+  auto signature = createSignature();
   bool success = autograph_certify_data(signature.data(), state.data(),
                                         data.data(), data.size());
   return make_tuple(success, signature);
 }
 
 tuple<bool, Bytes> Channel::certifyIdentity() const {
-  auto signature = createSignatureBytes();
+  auto signature = createSignature();
   bool success = autograph_certify_identity(signature.data(), state.data());
   return make_tuple(success, signature);
 }
 
 tuple<bool, Bytes, Bytes> Channel::close() {
-  auto key = createSecretKeyBytes();
-  auto ciphertext = createSessionBytes(state);
+  auto key = createSecretKey();
+  auto ciphertext = createSession(state);
   bool success =
       autograph_close_session(key.data(), ciphertext.data(), state.data());
   return make_tuple(success, key, ciphertext);
 }
 
 tuple<bool, uint32_t, Bytes> Channel::decrypt(const Bytes &message) {
-  auto plaintext = createPlaintextBytes(message);
-  auto plaintextSize = createSizeBytes();
-  auto index = createIndexBytes();
+  auto plaintext = createPlaintext(message);
+  auto plaintextSize = createSize();
+  auto index = createIndex();
   bool success = autograph_decrypt_message(
       plaintext.data(), plaintextSize.data(), index.data(), state.data(),
       message.data(), message.size());
   if (success) {
-    resizeBytes(plaintext, plaintextSize);
+    resize(plaintext, plaintextSize);
   }
   return make_tuple(success, readIndex(index), plaintext);
 }
 
 tuple<bool, uint32_t, Bytes> Channel::encrypt(const Bytes &plaintext) {
-  auto index = createIndexBytes();
-  auto ciphertext = createCiphertextBytes(plaintext);
+  auto index = createIndex();
+  auto ciphertext = createCiphertext(plaintext);
   bool success =
       autograph_encrypt_message(ciphertext.data(), index.data(), state.data(),
                                 plaintext.data(), plaintext.size());
@@ -63,7 +63,7 @@ tuple<bool, Bytes> Channel::performKeyExchange(
     const bool isInitiator, const KeyPair &ourIdentityKeyPair,
     KeyPair &ourEphemeralKeyPair, const Bytes &theirIdentityKey,
     const Bytes &theirEphemeralKey) {
-  auto handshake = createHandshakeBytes();
+  auto handshake = createHandshake();
   bool success = autograph_key_exchange(
       handshake.data(), state.data(), isInitiator ? 1 : 0,
       ourIdentityKeyPair.privateKey.data(), ourIdentityKeyPair.publicKey.data(),

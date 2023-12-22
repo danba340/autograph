@@ -5,11 +5,11 @@ public class Channel {
     var state: Bytes
 
     init() {
-        state = createStateBytes()
+        state = createState()
     }
 
     public func calculateSafetyNumber() throws -> Bytes {
-        var safetyNumber = createSafetyNumberBytes()
+        var safetyNumber = createSafetyNumber()
         let success = autograph_safety_number(&safetyNumber, &state) == 1
         if !success {
             throw AutographError.safetyNumber
@@ -18,7 +18,7 @@ public class Channel {
     }
 
     public func certifyData(data: Bytes) throws -> Bytes {
-        var signature = createSignatureBytes()
+        var signature = createSignature()
         let success = autograph_certify_data(
             &signature,
             &state,
@@ -32,7 +32,7 @@ public class Channel {
     }
 
     public func certifyIdentity() throws -> Bytes {
-        var signature = createSignatureBytes()
+        var signature = createSignature()
         let success = autograph_certify_identity(
             &signature,
             &state
@@ -44,8 +44,8 @@ public class Channel {
     }
 
     public func close() throws -> (Bytes, Bytes) {
-        var key = createSecretKeyBytes()
-        var ciphertext = createSessionBytes(state)
+        var key = createSecretKey()
+        var ciphertext = createSession(state)
         let success = autograph_close_session(&key, &ciphertext, &state) == 1
         if !success {
             throw AutographError.session
@@ -54,9 +54,9 @@ public class Channel {
     }
 
     public func decrypt(message: Bytes) throws -> (UInt32, Bytes) {
-        var plaintext = createPlaintextBytes(message)
-        var index = createIndexBytes()
-        var size = createSizeBytes()
+        var plaintext = createPlaintext(message)
+        var index = createIndex()
+        var size = createSize()
         let success = autograph_decrypt_message(
             &plaintext,
             &size,
@@ -68,12 +68,12 @@ public class Channel {
         if !success {
             throw AutographError.decryption
         }
-        return (readIndex(index), resizeBytes(plaintext, size))
+        return (readIndex(index), resize(plaintext, size))
     }
 
     public func encrypt(plaintext: Bytes) throws -> (UInt32, Bytes) {
-        var ciphertext = createCiphertextBytes(plaintext)
-        var index = createIndexBytes()
+        var ciphertext = createCiphertext(plaintext)
+        var index = createIndex()
         let success = autograph_encrypt_message(
             &ciphertext,
             &index,
@@ -87,16 +87,13 @@ public class Channel {
         return (readIndex(index), ciphertext)
     }
 
-    public func open(secretKey: inout Bytes, ciphertext: Bytes) throws {
-        let success = autograph_open_session(
+    public func open(secretKey: inout Bytes, ciphertext: Bytes) -> Bool {
+        autograph_open_session(
             &state,
             &secretKey,
             ciphertext,
             UInt32(ciphertext.count)
         ) == 1
-        if !success {
-            throw AutographError.session
-        }
     }
 
     public func performKeyExchange(
@@ -106,7 +103,7 @@ public class Channel {
         theirIdentityKey: Bytes,
         theirEphemeralKey: Bytes
     ) throws -> Bytes {
-        var handshake = createHandshakeBytes()
+        var handshake = createHandshake()
         let success = autograph_key_exchange(
             &handshake,
             &state,

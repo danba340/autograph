@@ -22,7 +22,7 @@ static void certify_data(benchmark::State& benchmarkState) {
   Autograph::Bytes data = {72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100};
 
   Autograph::Bytes signature(64);
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   std::copy(certificationState.begin(), certificationState.end(),
             state.begin());
 
@@ -50,7 +50,7 @@ static void certify_identity(benchmark::State& benchmarkState) {
       6,   231, 177, 120, 184, 52,  93,  155, 35,  35,  16,  40,  135, 52};
 
   Autograph::Bytes signature(64);
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   std::copy(certificationState.begin(), certificationState.end(),
             state.begin());
 
@@ -90,7 +90,7 @@ static void verify_data(benchmark::State& benchmarkState) {
 
   Autograph::Bytes data = {72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100};
 
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   std::copy(verificationState.begin(), verificationState.end(), state.begin());
 
   for (auto _ : benchmarkState) {
@@ -129,7 +129,7 @@ static void verify_identity(benchmark::State& benchmarkState) {
       151, 61,  253, 109, 250, 226, 140, 249, 3,   188, 44,  127, 108,
       196, 131, 204, 216, 54,  239, 157, 49,  107, 202, 123, 9};
 
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   std::copy(verificationState.begin(), verificationState.end(), state.begin());
 
   for (auto _ : benchmarkState) {

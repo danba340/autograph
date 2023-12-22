@@ -37,7 +37,7 @@ static void key_exchange(benchmark::State &benchmarkState) {
 
   Autograph::Bytes handshake(80);
   Autograph::Bytes ourEphemeralPrivateKey(32);
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
 
   for (auto _ : benchmarkState) {
     std::copy(aliceEphemeralPrivateKey.begin(), aliceEphemeralPrivateKey.end(),
@@ -80,7 +80,7 @@ static void verify_key_exchange(benchmark::State &benchmarkState) {
       34,  34,  36,  220, 228, 255, 233, 146, 248, 162, 157, 164, 237, 38,
       77,  217, 133, 180, 27,  98,  3,   247, 199, 24};
 
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   std::copy(verificationState.begin(), verificationState.end(), state.begin());
 
   for (auto _ : benchmarkState) {

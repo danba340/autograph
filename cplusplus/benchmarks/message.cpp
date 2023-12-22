@@ -19,7 +19,7 @@ static void decrypt_message(benchmark::State& benchmarkState) {
       86,  142, 184, 73,  69,  27,  43,  178, 92,  235, 209, 83,  247, 201,
       107, 101, 30,  171, 111, 124, 61,  79,  74,  85,  28,  31,  186, 140};
 
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   Autograph::Bytes plaintext(16);
   Autograph::Bytes plaintextSize(4);
   Autograph::Bytes index(4);
@@ -53,7 +53,7 @@ static void encrypt_message(benchmark::State& benchmarkState) {
       177, 55,  134, 149, 159, 211, 24,  84,  231, 36,  192, 217, 101, 73,
       6,   231, 177, 120, 184, 52,  93,  155, 35,  35,  16,  40,  135, 52};
 
-  auto state = Autograph::createStateBytes();
+  auto state = Autograph::createState();
   Autograph::Bytes plaintext = {72, 101, 108, 108, 111, 32,
                                 87, 111, 114, 108, 100};
   Autograph::Bytes ciphertext(32);

@@ -9,41 +9,41 @@ Bytes createBytes(const uint32_t size) {
   return bytes;
 }
 
-Bytes createCiphertextBytes(const Bytes &plaintext) {
+Bytes createCiphertext(const Bytes &plaintext) {
   return createBytes(autograph_ciphertext_size(plaintext.size()));
 }
 
-Bytes createHandshakeBytes() { return createBytes(80); }
+Bytes createHandshake() { return createBytes(80); }
 
-Bytes createIndexBytes() { return createBytes(4); }
+Bytes createIndex() { return createBytes(4); }
 
-Bytes createPlaintextBytes(const Bytes &ciphertext) {
+Bytes createPlaintext(const Bytes &ciphertext) {
   return createBytes(autograph_plaintext_size(ciphertext.size()));
 }
 
-Bytes createPrivateKeyBytes() { return createBytes(32); }
+Bytes createPrivateKey() { return createBytes(32); }
 
-Bytes createPublicKeyBytes() { return createBytes(32); }
+Bytes createPublicKey() { return createBytes(32); }
 
-Bytes createSafetyNumberBytes() { return createBytes(64); }
+Bytes createSafetyNumber() { return createBytes(64); }
 
-Bytes createSecretKeyBytes() { return createBytes(32); }
+Bytes createSecretKey() { return createBytes(32); }
 
-Bytes createSessionBytes(const Bytes &state) {
+Bytes createSession(const Bytes &state) {
   return createBytes(autograph_session_size(state.data()));
 }
 
-Bytes createSignatureBytes() { return createBytes(64); }
+Bytes createSignature() { return createBytes(64); }
 
-Bytes createSizeBytes() { return createBytes(4); }
+Bytes createSize() { return createBytes(4); }
 
-Bytes createStateBytes() { return createBytes(9348); }
+Bytes createState() { return createBytes(9348); }
 
 uint32_t readIndex(const Bytes &bytes) {
   return autograph_read_index(bytes.data());
 }
 
-void resizeBytes(Bytes &bytes, const Bytes &sizeBytes) {
+void resize(Bytes &bytes, const Bytes &sizeBytes) {
   auto size = autograph_read_size(sizeBytes.data());
   bytes.resize(size);
 }

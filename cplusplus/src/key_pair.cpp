@@ -4,8 +4,8 @@
 namespace Autograph {
 
 KeyPair createKeyPair() {
-  auto privateKey = createPrivateKeyBytes();
-  auto publicKey = createPublicKeyBytes();
+  auto privateKey = createPrivateKey();
+  auto publicKey = createPublicKey();
   KeyPair keyPair = {privateKey, publicKey};
   return keyPair;
 }
