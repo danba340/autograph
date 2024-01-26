@@ -1,45 +1,41 @@
-use crate::bytes::{create_private_key, create_public_key, Bytes};
-use crate::clib::{autograph_ephemeral_key_pair, autograph_identity_key_pair};
-use crate::error::Error;
+use rand_core::{CryptoRng, RngCore};
 
-#[derive(Clone, Debug)]
-pub struct KeyPair {
-    pub private_key: Bytes,
-    pub public_key: Bytes,
-}
+use crate::{
+    constants::KEY_PAIR_SIZE,
+    error::Error,
+    external::{init, key_pair_ephemeral, key_pair_identity},
+    types::KeyPair,
+};
 
-fn create_key_pair() -> KeyPair {
-    KeyPair {
-        private_key: create_private_key(),
-        public_key: create_public_key(),
+fn ephemeral_key_pair<T: RngCore + CryptoRng>(csprng: T, key_pair: &mut KeyPair) -> bool {
+    if !init() {
+        return false;
     }
+    key_pair_ephemeral(csprng, key_pair)
 }
 
-pub fn generate_ephemeral_key_pair() -> Result<KeyPair, Error> {
-    let mut key_pair = create_key_pair();
-    let success = unsafe {
-        autograph_ephemeral_key_pair(
-            key_pair.private_key.as_mut_ptr(),
-            key_pair.public_key.as_mut_ptr(),
-        )
-    } == 1;
+fn identity_key_pair<T: RngCore + CryptoRng>(csprng: T, key_pair: &mut KeyPair) -> bool {
+    if !init() {
+        return false;
+    }
+    key_pair_identity(csprng, key_pair)
+}
+
+pub fn generate_key_pair<T: RngCore + CryptoRng>(csprng: T) -> Result<KeyPair, Error> {
+    let mut key_pair: KeyPair = [0; KEY_PAIR_SIZE];
+    let success = ephemeral_key_pair(csprng, &mut key_pair);
     if !success {
-        Err(Error::KeyPair)
+        Err(Error::KeyGeneration)
     } else {
         Ok(key_pair)
     }
 }
 
-pub fn generate_identity_key_pair() -> Result<KeyPair, Error> {
-    let mut key_pair = create_key_pair();
-    let success = unsafe {
-        autograph_identity_key_pair(
-            key_pair.private_key.as_mut_ptr(),
-            key_pair.public_key.as_mut_ptr(),
-        )
-    } == 1;
+pub fn generate_identity_key_pair<T: RngCore + CryptoRng>(csprng: T) -> Result<KeyPair, Error> {
+    let mut key_pair: KeyPair = [0; KEY_PAIR_SIZE];
+    let success = identity_key_pair(csprng, &mut key_pair);
     if !success {
-        Err(Error::KeyPair)
+        Err(Error::KeyGeneration)
     } else {
         Ok(key_pair)
     }
