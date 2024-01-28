@@ -25,7 +25,7 @@ pub fn generate_key_pair<T: RngCore + CryptoRng>(csprng: T) -> Result<KeyPair, E
     let mut key_pair: KeyPair = [0; KEY_PAIR_SIZE];
     let success = ephemeral_key_pair(csprng, &mut key_pair);
     if !success {
-        Err(Error::KeyGeneration)
+        Err(Error::KeyPair)
     } else {
         Ok(key_pair)
     }
@@ -35,7 +35,7 @@ pub fn generate_identity_key_pair<T: RngCore + CryptoRng>(csprng: T) -> Result<K
     let mut key_pair: KeyPair = [0; KEY_PAIR_SIZE];
     let success = identity_key_pair(csprng, &mut key_pair);
     if !success {
-        Err(Error::KeyGeneration)
+        Err(Error::KeyPair)
     } else {
         Ok(key_pair)
     }

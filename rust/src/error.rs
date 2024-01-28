@@ -6,6 +6,6 @@ pub enum Error {
     Encryption,
     Initialization,
     KeyExchange,
-    KeyGeneration,
+    KeyPair,
     Session,
 }
