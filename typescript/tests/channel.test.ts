@@ -1,30 +1,29 @@
-import { Channel } from '../src/autograph'
+import { Channel, ready } from '../src/autograph'
 
 describe('Channel', () => {
   const aliceHandshake = Uint8Array.from([
-    159, 242, 216, 99, 227, 6, 170, 116, 241, 86, 48, 60, 160, 128, 234, 7, 118,
-    43, 226, 89, 48, 56, 90, 4, 180, 141, 175, 112, 238, 107, 14, 181, 167, 246,
-    102, 132, 75, 13, 181, 5, 47, 174, 244, 74, 94, 113, 56, 140, 85, 178, 112,
-    105, 108, 75, 154, 82, 191, 5, 197, 87, 213, 162, 234, 108, 184, 11, 61,
-    242, 143, 198, 61, 43, 33, 37, 75, 135, 190, 41, 74, 208
+    108, 221, 39, 135, 29, 232, 233, 41, 202, 186, 132, 24, 139, 184, 148, 25,
+    176, 220, 36, 233, 141, 198, 70, 202, 20, 200, 68, 236, 107, 159, 123, 139,
+    153, 154, 90, 113, 25, 157, 63, 161, 100, 176, 57, 50, 216, 252, 93, 76, 25,
+    164, 40, 82, 84, 224, 230, 141, 109, 246, 107, 3, 238, 97, 56, 4
   ])
 
   const bobHandshake = Uint8Array.from([
-    105, 178, 89, 152, 225, 150, 49, 251, 77, 155, 134, 254, 92, 168, 57, 159,
-    252, 72, 82, 106, 91, 57, 65, 119, 0, 72, 102, 245, 247, 26, 62, 212, 237,
-    20, 252, 233, 27, 144, 35, 93, 180, 235, 237, 96, 46, 167, 156, 114, 58, 12,
-    43, 214, 201, 79, 108, 134, 34, 34, 36, 220, 228, 255, 233, 146, 248, 162,
-    157, 164, 237, 38, 77, 217, 133, 180, 27, 98, 3, 247, 199, 24
+    250, 223, 89, 191, 184, 213, 155, 233, 5, 153, 109, 133, 148, 152, 247, 25,
+    100, 247, 219, 247, 174, 18, 52, 119, 23, 0, 229, 18, 104, 158, 177, 221,
+    100, 44, 83, 20, 129, 129, 39, 156, 119, 247, 59, 12, 220, 184, 207, 44,
+    211, 160, 50, 225, 163, 106, 15, 116, 0, 104, 33, 153, 120, 111, 170, 11
   ])
 
   const aliceMessage = Uint8Array.from([
-    131, 234, 21, 146, 246, 197, 94, 148, 235, 8, 84, 219, 17, 162, 128, 103,
-    112, 25, 127, 50, 73, 12, 174, 1, 124, 118, 175, 10, 130, 195, 225, 29
+    51, 243, 8, 165, 206, 25, 129, 63, 124, 51, 176, 40, 21, 4, 178, 3, 128,
+    195, 26, 68, 65, 200, 192, 212, 63, 10, 201, 247, 177, 3, 137, 113
   ])
 
   const bobMessage = Uint8Array.from([
-    129, 139, 133, 26, 75, 190, 117, 105, 17, 240, 174, 247, 25, 28, 206, 173,
-    50, 234, 25, 63, 174, 147, 185, 113, 226, 164, 21, 197, 114, 198, 43, 8
+    253, 199, 105, 203, 139, 136, 132, 228, 198, 157, 65, 140, 116, 90, 212,
+    112, 55, 190, 186, 221, 205, 80, 46, 24, 161, 117, 201, 113, 133, 213, 29,
+    105
   ])
 
   const aliceSignatureBobData = Uint8Array.from([
@@ -99,104 +98,81 @@ describe('Channel', () => {
     0, 48, 226
   ])
 
-  const aliceIdentityKeyPair = {
-    privateKey: Uint8Array.from([
-      118, 164, 17, 240, 147, 79, 190, 38, 66, 93, 254, 238, 125, 202, 197, 2,
-      56, 252, 122, 177, 18, 187, 249, 208, 29, 149, 122, 103, 57, 199, 19, 17
-    ]),
-    publicKey: Uint8Array.from([
-      213, 153, 88, 124, 93, 136, 104, 111, 196, 208, 155, 156, 165, 31, 120,
-      186, 79, 205, 247, 175, 243, 184, 114, 80, 152, 243, 24, 225, 91, 220,
-      141, 150
-    ])
-  }
+  const aliceIdentityKeyPair = Uint8Array.from([
+    118, 164, 17, 240, 147, 79, 190, 38, 66, 93, 254, 238, 125, 202, 197, 2, 56,
+    252, 122, 177, 18, 187, 249, 208, 29, 149, 122, 103, 57, 199, 19, 17, 213,
+    153, 88, 124, 93, 136, 104, 111, 196, 208, 155, 156, 165, 31, 120, 186, 79,
+    205, 247, 175, 243, 184, 114, 80, 152, 243, 24, 225, 91, 220, 141, 150
+  ])
 
-  const bobIdentityKeyPair = {
-    privateKey: Uint8Array.from([
-      52, 0, 150, 226, 138, 192, 249, 231, 126, 199, 95, 240, 106, 17, 150, 95,
-      221, 247, 33, 201, 19, 62, 4, 135, 169, 104, 128, 218, 250, 251, 243, 190
-    ]),
-    publicKey: Uint8Array.from([
-      177, 67, 45, 125, 158, 190, 181, 222, 101, 149, 224, 200, 223, 235, 222,
-      110, 67, 61, 200, 62, 29, 37, 150, 228, 137, 114, 143, 77, 115, 135, 143,
-      103
-    ])
-  }
+  const bobIdentityKeyPair = Uint8Array.from([
+    52, 0, 150, 226, 138, 192, 249, 231, 126, 199, 95, 240, 106, 17, 150, 95,
+    221, 247, 33, 201, 19, 62, 4, 135, 169, 104, 128, 218, 250, 251, 243, 190,
+    177, 67, 45, 125, 158, 190, 181, 222, 101, 149, 224, 200, 223, 235, 222,
+    110, 67, 61, 200, 62, 29, 37, 150, 228, 137, 114, 143, 77, 115, 135, 143,
+    103
+  ])
 
   let a: Channel
   let b: Channel
+  let aliceVerified: boolean
+  let bobVerified: boolean
   let handshakeAlice: Uint8Array
   let handshakeBob: Uint8Array
-  let aliceKeyExchangeVerified: boolean
-  let bobKeyExchangeVerified: boolean
 
-  beforeEach(async () => {
-    const aliceEphemeralKeyPair = {
-      privateKey: Uint8Array.from([
-        201, 142, 54, 248, 151, 150, 224, 79, 30, 126, 207, 157, 118, 85, 9,
-        212, 148, 156, 73, 176, 107, 107, 47, 111, 95, 98, 33, 192, 80, 223, 48,
-        221
-      ]),
-      publicKey: Uint8Array.from([
-        35, 16, 23, 37, 205, 131, 166, 97, 13, 81, 136, 246, 193, 253, 139, 193,
-        230, 155, 222, 221, 37, 114, 190, 87, 104, 44, 210, 144, 127, 176, 198,
-        45
-      ])
-    }
+  beforeAll(async () => {
+    await ready()
+  })
 
-    const bobEphemeralKeyPair = {
-      privateKey: Uint8Array.from([
-        74, 233, 106, 152, 76, 212, 181, 144, 132, 237, 223, 58, 122, 173, 99,
-        100, 152, 219, 214, 210, 213, 72, 171, 73, 167, 92, 199, 196, 176, 66,
-        213, 208
-      ]),
-      publicKey: Uint8Array.from([
-        88, 115, 171, 4, 34, 181, 120, 21, 10, 39, 204, 215, 158, 210, 177, 243,
-        28, 138, 52, 91, 236, 55, 30, 117, 10, 125, 87, 232, 80, 6, 232, 93
-      ])
-    }
+  beforeEach(() => {
+    const aliceEphemeralKeyPair = Uint8Array.from([
+      201, 142, 54, 248, 151, 150, 224, 79, 30, 126, 207, 157, 118, 85, 9, 212,
+      148, 156, 73, 176, 107, 107, 47, 111, 95, 98, 33, 192, 80, 223, 48, 221,
+      35, 16, 23, 37, 205, 131, 166, 97, 13, 81, 136, 246, 193, 253, 139, 193,
+      230, 155, 222, 221, 37, 114, 190, 87, 104, 44, 210, 144, 127, 176, 198, 45
+    ])
+
+    const bobEphemeralKeyPair = Uint8Array.from([
+      74, 233, 106, 152, 76, 212, 181, 144, 132, 237, 223, 58, 122, 173, 99,
+      100, 152, 219, 214, 210, 213, 72, 171, 73, 167, 92, 199, 196, 176, 66,
+      213, 208, 88, 115, 171, 4, 34, 181, 120, 21, 10, 39, 204, 215, 158, 210,
+      177, 243, 28, 138, 52, 91, 236, 55, 30, 117, 10, 125, 87, 232, 80, 6, 232,
+      93
+    ])
 
     a = new Channel()
     b = new Channel()
-    const aliceKeyExchange = await a.performKeyExchange(
-      true,
+
+    const [, aliceHello] = a.useKeyPairs(
       aliceIdentityKeyPair,
-      aliceEphemeralKeyPair,
-      bobIdentityKeyPair.publicKey,
-      bobEphemeralKeyPair.publicKey
+      aliceEphemeralKeyPair
     )
-    const bobKeyExchange = await b.performKeyExchange(
-      false,
-      bobIdentityKeyPair,
-      bobEphemeralKeyPair,
-      aliceIdentityKeyPair.publicKey,
-      aliceEphemeralKeyPair.publicKey
-    )
-    handshakeAlice = aliceKeyExchange[1]
-    handshakeBob = bobKeyExchange[1]
-    aliceKeyExchangeVerified = a.verifyKeyExchange(
-      aliceEphemeralKeyPair.publicKey,
-      handshakeBob
-    )
-    bobKeyExchangeVerified = b.verifyKeyExchange(
-      bobEphemeralKeyPair.publicKey,
-      handshakeAlice
-    )
+
+    const [, bobHello] = b.useKeyPairs(bobIdentityKeyPair, bobEphemeralKeyPair)
+
+    a.usePublicKeys(bobHello)
+    b.usePublicKeys(aliceHello)
+
+    const [, aliceSignature] = a.keyExchange(true)
+    const [, bobSignature] = b.keyExchange(false)
+
+    handshakeAlice = aliceSignature
+    handshakeBob = bobSignature
+
+    aliceVerified = a.verifyKeyExchange(handshakeBob)
+    bobVerified = b.verifyKeyExchange(handshakeAlice)
   })
 
   it('should allow Alice and Bob to perform a key exchange', () => {
+    expect(aliceVerified).toBe(true)
+    expect(bobVerified).toBe(true)
     expect(handshakeAlice).toEqual(aliceHandshake)
     expect(handshakeBob).toEqual(bobHandshake)
   })
 
-  it('should allow Alice and Bob to verify the key exchange', () => {
-    expect(aliceKeyExchangeVerified).toBe(true)
-    expect(bobKeyExchangeVerified).toBe(true)
-  })
-
   it('should calculate safety numbers correctly', () => {
-    const [aliceSuccess, aliceSafetyNumber] = a.calculateSafetyNumber()
-    const [bobSuccess, bobSafetyNumber] = b.calculateSafetyNumber()
+    const [aliceSuccess, aliceSafetyNumber] = a.authenticate()
+    const [bobSuccess, bobSafetyNumber] = b.authenticate()
     expect(aliceSuccess).toBe(true)
     expect(bobSuccess).toBe(true)
     expect(aliceSafetyNumber).toEqual(safetyNumber)
@@ -294,5 +270,15 @@ describe('Channel', () => {
     expect(plaintext2).toEqual(data2)
     expect(plaintext3).toEqual(data3)
     expect(plaintext4).toEqual(data4)
+  })
+
+  it('should handle sessions correctly', () => {
+    const [closeSuccess, key, ciphertext] = a.close()
+    const openSuccess = b.open(key, ciphertext)
+    const [certifySuccess, signature] = b.certifyIdentity()
+    expect(closeSuccess).toBe(true)
+    expect(openSuccess).toBe(true)
+    expect(certifySuccess).toBe(true)
+    expect(signature).toEqual(aliceSignatureBobIdentity)
   })
 })

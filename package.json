@@ -35,8 +35,7 @@
   "exports": "./typescript/dist/src/autograph.js",
   "files": [
     "typescript/dist/src/**/*.js",
-    "typescript/dist/src/autograph.wasm",
-    "types.d.ts"
+    "typescript/dist/src/autograph.wasm"
   ],
   "homepage": "https://github.com/christoffercarlsson/autograph#readme",
   "keywords": [
@@ -70,6 +69,5 @@
     "test": "npm run build && rimraf typescript/coverage && NODE_OPTIONS='--experimental-vm-modules --no-warnings' npx jest --no-cache"
   },
   "sideEffects": false,
-  "type": "module",
-  "types": "./types.d.ts"
+  "type": "module"
 }

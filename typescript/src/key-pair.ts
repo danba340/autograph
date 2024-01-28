@@ -1,26 +1,16 @@
-import { KeyPair } from '../../types'
-import { createPrivateKey, createPublicKey } from './bytes'
-import { ephemeral_key_pair, identity_key_pair, ready } from './clib'
+import { autograph_key_pair, autograph_identity_key_pair } from './clib'
+import { KEY_PAIR_SIZE } from './contants'
 
-const createKeyPair = () => ({
-  privateKey: createPrivateKey(),
-  publicKey: createPublicKey()
-})
+const createKeyPair = () => new Uint8Array(KEY_PAIR_SIZE)
 
-export const generateEphemeralKeyPair = async (): Promise<
-  [boolean, KeyPair]
-> => {
-  await ready()
+export const generateIdentityKeyPair = (): [boolean, Uint8Array] => {
   const keyPair = createKeyPair()
-  const success = ephemeral_key_pair(keyPair.privateKey, keyPair.publicKey)
-  return [!!success, keyPair]
+  const success = autograph_identity_key_pair(keyPair)
+  return [success, keyPair]
 }
 
-export const generateIdentityKeyPair = async (): Promise<
-  [boolean, KeyPair]
-> => {
-  await ready()
+export const generateKeyPair = (): [boolean, Uint8Array] => {
   const keyPair = createKeyPair()
-  const success = identity_key_pair(keyPair.privateKey, keyPair.publicKey)
-  return [!!success, keyPair]
+  const success = autograph_key_pair(keyPair)
+  return [success, keyPair]
 }

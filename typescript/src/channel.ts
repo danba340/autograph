@@ -1,32 +1,68 @@
-import { KeyPair } from '../../types'
 import {
-  createCiphertext,
-  createHandshake,
-  createIndex,
-  createPlaintext,
-  createSafetyNumber,
-  createSecretKey,
-  createSession,
-  createSignature,
-  createSize,
-  createState,
-  readIndex,
-  resize
-} from './bytes'
-import {
-  certify_data,
-  certify_identity,
-  close_session,
-  decrypt_message,
-  encrypt_message,
-  key_exchange,
-  open_session,
-  ready,
-  safety_number,
-  verify_data,
-  verify_identity,
-  verify_key_exchange
+  autograph_authenticate,
+  autograph_certify_data,
+  autograph_certify_identity,
+  autograph_ciphertext_size,
+  autograph_close_session,
+  autograph_decrypt_message,
+  autograph_encrypt_message,
+  autograph_key_exchange,
+  autograph_open_session,
+  autograph_plaintext_size,
+  autograph_read_index,
+  autograph_read_size,
+  autograph_session_size,
+  autograph_use_key_pairs,
+  autograph_use_public_keys,
+  autograph_verify_data,
+  autograph_verify_identity,
+  autograph_verify_key_exchange
 } from './clib'
+import {
+  HELLO_SIZE,
+  INDEX_SIZE,
+  SAFETY_NUMBER_SIZE,
+  SECRET_KEY_SIZE,
+  SIGNATURE_SIZE,
+  SIZE_SIZE,
+  STATE_SIZE
+} from './contants'
+
+const createHello = () => new Uint8Array(HELLO_SIZE)
+
+const createIndex = () => new Uint8Array(INDEX_SIZE)
+
+const createSafetyNumber = () => new Uint8Array(SAFETY_NUMBER_SIZE)
+
+const createSecretKey = () => new Uint8Array(SECRET_KEY_SIZE)
+
+const createSignature = () => new Uint8Array(SIGNATURE_SIZE)
+
+const createSize = () => new Uint8Array(SIZE_SIZE)
+
+const createState = () => new Uint8Array(STATE_SIZE)
+
+const createCiphertext = (plaintext: Uint8Array) => {
+  const size = autograph_ciphertext_size(plaintext.byteLength)
+  return new Uint8Array(size)
+}
+
+const createPlaintext = (ciphertext: Uint8Array) => {
+  const size = autograph_plaintext_size(ciphertext.byteLength)
+  return new Uint8Array(size)
+}
+
+const createSessionCiphertext = (state: Uint8Array) => {
+  const size = autograph_session_size(state)
+  return new Uint8Array(size)
+}
+
+const readIndex = (bytes: Uint8Array) => autograph_read_index(bytes)
+
+const readSize = (bytes: Uint8Array) => autograph_read_size(bytes)
+
+const resizePlaintext = (plaintext: Uint8Array, size: Uint8Array) =>
+  plaintext.subarray(0, readSize(size))
 
 export default class Channel {
   private state: Uint8Array
@@ -35,90 +71,83 @@ export default class Channel {
     this.state = createState()
   }
 
-  calculateSafetyNumber(): [boolean, Uint8Array] {
-    const safetyNumber = createSafetyNumber()
-    const success = safety_number(safetyNumber, this.state)
-    return [!!success, safetyNumber]
-  }
-
-  certifyData(data: Uint8Array): [boolean, Uint8Array] {
-    const signature = createSignature()
-    const success = certify_data(signature, this.state, data, data.byteLength)
-    return [!!success, signature]
-  }
-
-  certifyIdentity(): [boolean, Uint8Array] {
-    const signature = createSignature()
-    const success = certify_identity(signature, this.state)
-    return [!!success, signature]
-  }
-
-  close(): [boolean, Uint8Array, Uint8Array] {
-    const key = createSecretKey()
-    const ciphertext = createSession(this.state)
-    const success = close_session(key, ciphertext, this.state)
-    return [!!success, key, ciphertext]
-  }
-
-  decrypt(message: Uint8Array): [boolean, number, Uint8Array] {
-    const plaintext = createPlaintext(message)
-    const index = createIndex()
-    const size = createSize()
-    const success = decrypt_message(
-      plaintext,
-      size,
-      index,
+  useKeyPairs(
+    identityKeyPair: Uint8Array,
+    ephemeralKeyPair: Uint8Array
+  ): [boolean, Uint8Array] {
+    const publicKeys = createHello()
+    const success = autograph_use_key_pairs(
+      publicKeys,
       this.state,
-      message,
-      message.byteLength
+      identityKeyPair,
+      ephemeralKeyPair
     )
-    return [!!success, readIndex(index), resize(plaintext, size)]
+    return [success, publicKeys]
+  }
+
+  usePublicKeys(publicKeys: Uint8Array) {
+    autograph_use_public_keys(this.state, publicKeys)
+  }
+
+  authenticate(): [boolean, Uint8Array] {
+    const safetyNumber = createSafetyNumber()
+    const success = autograph_authenticate(safetyNumber, this.state)
+    return [success, safetyNumber]
+  }
+
+  keyExchange(isInitiator: boolean): [boolean, Uint8Array] {
+    const signature = createSignature()
+    const success = autograph_key_exchange(signature, this.state, isInitiator)
+    return [success, signature]
+  }
+
+  verifyKeyExchange(signature: Uint8Array): boolean {
+    return autograph_verify_key_exchange(this.state, signature)
   }
 
   encrypt(plaintext: Uint8Array): [boolean, number, Uint8Array] {
     const ciphertext = createCiphertext(plaintext)
     const index = createIndex()
-    const success = encrypt_message(
+    const success = autograph_encrypt_message(
       ciphertext,
       index,
       this.state,
       plaintext,
       plaintext.byteLength
     )
-    return [!!success, readIndex(index), ciphertext]
+    return [success, readIndex(index), ciphertext]
   }
 
-  async open(secretKey: Uint8Array, ciphertext: Uint8Array): Promise<boolean> {
-    await ready()
-    return !!open_session(
+  decrypt(ciphertext: Uint8Array): [boolean, number, Uint8Array] {
+    const plaintext = createPlaintext(ciphertext)
+    const index = createIndex()
+    const size = createSize()
+    const success = autograph_decrypt_message(
+      plaintext,
+      size,
+      index,
       this.state,
-      secretKey,
       ciphertext,
       ciphertext.byteLength
     )
+    return [success, readIndex(index), resizePlaintext(plaintext, size)]
   }
 
-  async performKeyExchange(
-    isInitiator: boolean,
-    ourIdentityKeyPair: KeyPair,
-    ourEphemeralKeyPair: KeyPair,
-    theirIdentityKey: Uint8Array,
-    theirEphemeralKey: Uint8Array
-  ): Promise<[boolean, Uint8Array]> {
-    await ready()
-    const handshake = createHandshake()
-    const success = key_exchange(
-      handshake,
+  certifyData(data: Uint8Array): [boolean, Uint8Array] {
+    const signature = createSignature()
+    const success = autograph_certify_data(
+      signature,
       this.state,
-      isInitiator ? 1 : 0,
-      ourIdentityKeyPair.privateKey,
-      ourIdentityKeyPair.publicKey,
-      ourEphemeralKeyPair.privateKey,
-      ourEphemeralKeyPair.publicKey,
-      theirIdentityKey,
-      theirEphemeralKey
+      data,
+      data.byteLength
     )
-    return [!!success, handshake]
+    return [success, signature]
+  }
+
+  certifyIdentity(): [boolean, Uint8Array] {
+    const signature = createSignature()
+    const success = autograph_certify_identity(signature, this.state)
+    return [success, signature]
   }
 
   verifyData(
@@ -126,7 +155,7 @@ export default class Channel {
     publicKey: Uint8Array,
     signature: Uint8Array
   ): boolean {
-    return !!verify_data(
+    return autograph_verify_data(
       this.state,
       data,
       data.byteLength,
@@ -136,17 +165,22 @@ export default class Channel {
   }
 
   verifyIdentity(publicKey: Uint8Array, signature: Uint8Array): boolean {
-    return !!verify_identity(this.state, publicKey, signature)
+    return autograph_verify_identity(this.state, publicKey, signature)
   }
 
-  verifyKeyExchange(
-    ourEphemeralPublicKey: Uint8Array,
-    theirHandshake: Uint8Array
-  ): boolean {
-    return !!verify_key_exchange(
+  close(): [boolean, Uint8Array, Uint8Array] {
+    const key = createSecretKey()
+    const ciphertext = createSessionCiphertext(this.state)
+    const success = autograph_close_session(key, ciphertext, this.state)
+    return [success, key, ciphertext]
+  }
+
+  open(key: Uint8Array, ciphertext: Uint8Array): boolean {
+    return autograph_open_session(
       this.state,
-      ourEphemeralPublicKey,
-      theirHandshake
+      key,
+      ciphertext,
+      ciphertext.byteLength
     )
   }
 }
