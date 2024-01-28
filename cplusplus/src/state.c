@@ -1,169 +1,156 @@
-#include "autograph/state.h"
+#include "state.h"
 
-#include "autograph/bytes.h"
-#include "autograph/kdf.h"
+#include <string.h>
 
-uint8_t autograph_abort(uint8_t *state) {
-  autograph_init(state);
-  return 0;
+#include "autograph.h"
+#include "constants.h"
+#include "external.h"
+#include "numbers.h"
+
+void set_identity_key_pair(uint8_t *state, const uint8_t *key_pair) {
+  memmove(state + IDENTITY_KEY_PAIR_OFFSET, key_pair, KEY_PAIR_SIZE);
 }
 
-uint16_t autograph_next_key_offset(const uint8_t *state) {
-  uint32_t index;
-  uint16_t offset;
-  for (offset = 168; offset < 9312; offset += 36) {
-    index = autograph_read_uint32(state, offset);
-    if (index == 0) {
+uint8_t *get_identity_key_pair(uint8_t *state) {
+  return state + IDENTITY_KEY_PAIR_OFFSET;
+}
+
+uint8_t *get_identity_public_key(uint8_t *state) {
+  return state + IDENTITY_PUBLIC_KEY_OFFSET;
+}
+
+uint8_t *get_their_identity_key(uint8_t *state) {
+  return state + THEIR_IDENTITY_KEY_OFFSET;
+}
+
+void set_their_identity_key(uint8_t *state, const uint8_t *public_key) {
+  memmove(get_their_identity_key(state), public_key, PUBLIC_KEY_SIZE);
+}
+
+uint8_t *get_sending_nonce(uint8_t *state) {
+  return state + SENDING_NONCE_OFFSET;
+}
+
+uint8_t *get_sending_index(uint8_t *state) {
+  return state + SENDING_INDEX_OFFSET;
+}
+
+uint8_t *get_sending_key(uint8_t *state) { return state + SENDING_KEY_OFFSET; }
+
+uint8_t *get_receiving_nonce(uint8_t *state) {
+  return state + RECEIVING_NONCE_OFFSET;
+}
+
+uint8_t *get_receiving_index(uint8_t *state) {
+  return state + RECEIVING_INDEX_OFFSET;
+}
+
+uint8_t *get_receiving_key(uint8_t *state) {
+  return state + RECEIVING_KEY_OFFSET;
+}
+
+void set_secret_keys(uint8_t *state, bool is_initiator, const uint8_t *okm) {
+  if (is_initiator) {
+    memmove(get_sending_key(state), okm, SECRET_KEY_SIZE);
+    memmove(get_receiving_key(state), okm + SECRET_KEY_SIZE, SECRET_KEY_SIZE);
+  } else {
+    memmove(get_sending_key(state), okm + SECRET_KEY_SIZE, SECRET_KEY_SIZE);
+    memmove(get_receiving_key(state), okm, SECRET_KEY_SIZE);
+  }
+}
+
+bool increment_index(uint8_t *state, const size_t offset) {
+  uint32_t index = get_uint32(state, offset);
+  if (index == UINT32_MAX) {
+    return false;
+  }
+  set_uint32(state, offset, index + 1);
+  return true;
+}
+
+bool increment_sending_index(uint8_t *state) {
+  return increment_index(state, SENDING_INDEX_OFFSET);
+}
+
+bool increment_receiving_index(uint8_t *state) {
+  return increment_index(state, RECEIVING_INDEX_OFFSET);
+}
+
+void set_ephemeral_key_pair(uint8_t *state, const uint8_t *key_pair) {
+  memmove(state + EPHEMERAL_KEY_PAIR_OFFSET, key_pair, KEY_PAIR_SIZE);
+}
+
+uint8_t *get_ephemeral_private_key(uint8_t *state) {
+  return state + EPHEMERAL_KEY_PAIR_OFFSET;
+}
+
+void delete_ephemeral_private_key(uint8_t *state) {
+  zeroize(state + EPHEMERAL_KEY_PAIR_OFFSET, PRIVATE_KEY_SIZE);
+}
+
+uint8_t *get_ephemeral_public_key(uint8_t *state) {
+  return state + EPHEMERAL_PUBLIC_KEY_OFFSET;
+}
+
+uint8_t *get_their_ephemeral_key(uint8_t *state) {
+  return state + THEIR_EPHEMERAL_KEY_OFFSET;
+}
+
+void set_their_ephemeral_key(uint8_t *state, const uint8_t *public_key) {
+  memmove(get_their_ephemeral_key(state), public_key, PUBLIC_KEY_SIZE);
+}
+
+void zeroize_skipped_indexes(uint8_t *state) {
+  zeroize(state + SKIPPED_INDEXES_MIN_OFFSET,
+          STATE_SIZE - SKIPPED_INDEXES_MIN_OFFSET);
+}
+
+size_t autograph_session_size(const uint8_t *state) {
+  if (get_uint32(state, SKIPPED_INDEXES_MAX_OFFSET) > 0) {
+    return STATE_SIZE;
+  }
+  size_t offset = SKIPPED_INDEXES_MIN_OFFSET;
+  while (offset < SKIPPED_INDEXES_MAX_OFFSET) {
+    if (get_uint32(state, offset) == 0) {
       return offset;
     }
+    offset += INDEX_SIZE;
   }
-  return offset;
+  return STATE_SIZE;
 }
 
-uint16_t autograph_last_key_offset(const uint8_t *state) {
-  uint16_t offset = autograph_next_key_offset(state);
-  if (autograph_read_uint32(state, offset) > 0) {
-    return offset;
+bool skip_index(uint8_t *state) {
+  size_t offset = autograph_session_size(state);
+  if (offset > SKIPPED_INDEXES_MAX_OFFSET) {
+    return false;
   }
-  return offset == 168 ? offset : offset - 36;
+  memmove(state + offset, get_receiving_index(state), INDEX_SIZE);
+  return true;
 }
 
-void autograph_delete_key(uint8_t *state, const uint16_t next_offset) {
-  uint16_t offset = next_offset - 36;
-  uint16_t last_offset = autograph_last_key_offset(state);
+size_t get_skipped_index(uint8_t *index, uint8_t *nonce, const uint8_t *state,
+                         const size_t offset) {
+  size_t o;
+  if (offset == 0) {
+    zeroize(nonce, NONCE_SIZE);
+    o = SKIPPED_INDEXES_MIN_OFFSET;
+  } else {
+    o = offset;
+  }
+  if (o > SKIPPED_INDEXES_MAX_OFFSET) {
+    return 0;
+  }
+  memmove(index, state + o, INDEX_SIZE);
+  memmove(nonce + NONCE_SIZE - INDEX_SIZE, state + o, INDEX_SIZE);
+  return o + INDEX_SIZE;
+}
+
+void delete_skipped_index(uint8_t *state, const size_t next_offset) {
+  size_t session_size = autograph_session_size(state);
+  size_t offset = next_offset - INDEX_SIZE;
+  size_t last_offset = session_size - INDEX_SIZE;
   if (offset != last_offset) {
-    autograph_write(state, offset, state, last_offset, 36);
+    memmove(state + offset, state + last_offset, INDEX_SIZE);
   }
-  autograph_write_zero(state, last_offset, 36);
-}
-
-uint8_t autograph_increment_index(uint8_t *state, const uint16_t offset) {
-  uint32_t index = autograph_read_uint32(state, offset);
-  if (index == UINT32_MAX) {
-    return 0;
-  }
-  autograph_write_uint32(state, offset, index + 1);
-  return 1;
-}
-
-void autograph_init(uint8_t *state) { autograph_write_zero(state, 0, 9348); }
-
-uint8_t autograph_ratchet_key(uint8_t *state, const uint16_t offset) {
-  uint8_t result = autograph_increment_index(state, offset);
-  if (!result) {
-    return 0;
-  }
-  uint8_t context[4];
-  uint8_t ikm[32];
-  uint8_t key[32];
-  autograph_write(context, 0, state, offset, 4);
-  autograph_write(ikm, 0, state, offset + 4, 32);
-  result = autograph_kdf(key, ikm, context);
-  autograph_write(state, offset + 4, key, 0, 32);
-  autograph_write_zero(ikm, 0, 32);
-  autograph_write_zero(key, 0, 32);
-  return result;
-}
-
-uint8_t autograph_ratchet_receiving_key(uint8_t *state) {
-  return autograph_ratchet_key(state, 132);
-}
-
-uint8_t autograph_ratchet_sending_key(uint8_t *state) {
-  return autograph_ratchet_key(state, 96);
-}
-
-uint16_t autograph_read_key(uint8_t *index, uint8_t *secret_key, uint8_t *state,
-                            const uint16_t offset) {
-  uint16_t o = offset == 0 ? 168 : offset;
-  uint32_t i = autograph_read_uint32(state, o);
-  if (i == 0 || o > 9312) {
-    return 0;
-  }
-  autograph_write_uint32(index, 0, i);
-  autograph_write(secret_key, 0, state, o + 4, 32);
-  return o + 36;
-}
-
-void autograph_read_our_private_key(uint8_t *our_private_key,
-                                    const uint8_t *state) {
-  autograph_write(our_private_key, 0, state, 0, 32);
-}
-
-void autograph_read_our_public_key(uint8_t *our_public_key,
-                                   const uint8_t *state) {
-  autograph_write(our_public_key, 0, state, 32, 32);
-}
-
-void autograph_read_state_index(uint8_t *index, const uint8_t *state,
-                                const uint16_t offset) {
-  autograph_write_uint32(index, 0, autograph_read_uint32(state, offset));
-}
-
-void autograph_read_receiving_index(uint8_t *index, const uint8_t *state) {
-  return autograph_read_state_index(index, state, 132);
-}
-
-void autograph_read_receiving_key(uint8_t *secret_key, const uint8_t *state) {
-  autograph_write(secret_key, 0, state, 136, 32);
-}
-
-void autograph_read_sending_index(uint8_t *index, const uint8_t *state) {
-  return autograph_read_state_index(index, state, 96);
-}
-
-void autograph_read_sending_key(uint8_t *secret_key, const uint8_t *state) {
-  autograph_write(secret_key, 0, state, 100, 32);
-}
-
-void autograph_read_their_public_key(uint8_t *their_public_key,
-                                     const uint8_t *state) {
-  autograph_write(their_public_key, 0, state, 64, 32);
-}
-
-uint16_t autograph_state_size(const uint8_t *state) {
-  uint16_t offset = autograph_last_key_offset(state);
-  if (autograph_read_uint32(state, offset) == 0) {
-    return offset;
-  }
-  return offset + 36;
-}
-
-uint8_t autograph_skip_key(uint8_t *state) {
-  uint16_t offset = autograph_next_key_offset(state);
-  if (autograph_read_uint32(state, offset) > 0) {
-    return 0;
-  }
-  autograph_write(state, offset, state, 132, 36);
-  return 1;
-}
-
-void autograph_write_our_private_key(uint8_t *state,
-                                     const uint8_t *private_key) {
-  autograph_write(state, 0, private_key, 0, 32);
-}
-
-void autograph_write_our_public_key(uint8_t *state, const uint8_t *public_key) {
-  autograph_write(state, 32, public_key, 0, 32);
-}
-
-void autograph_write_receiving_index(uint8_t *state, const uint32_t index) {
-  autograph_write_uint32(state, 132, index);
-}
-
-void autograph_write_receiving_key(uint8_t *state, const uint8_t *key) {
-  autograph_write(state, 136, key, 0, 32);
-}
-
-void autograph_write_sending_index(uint8_t *state, const uint32_t index) {
-  autograph_write_uint32(state, 96, index);
-}
-
-void autograph_write_sending_key(uint8_t *state, const uint8_t *key) {
-  autograph_write(state, 100, key, 0, 32);
-}
-
-void autograph_write_their_public_key(uint8_t *state,
-                                      const uint8_t *public_key) {
-  autograph_write(state, 64, public_key, 0, 32);
+  zeroize(state + last_offset, STATE_SIZE - last_offset);
 }

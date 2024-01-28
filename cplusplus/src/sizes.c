@@ -1,31 +1,20 @@
 #include "autograph.h"
-#include "autograph/bytes.h"
-#include "autograph/state.h"
+#include "constants.h"
 
-uint32_t autograph_padded_size(const uint32_t plaintext_size) {
-  uint32_t limit = UINT32_MAX - 16;
-  if (plaintext_size > limit) {
-    return limit;
-  }
-  return plaintext_size + 16 - plaintext_size % 16;
-}
+size_t autograph_hello_size() { return HELLO_SIZE; }
 
-uint32_t autograph_ciphertext_size(const uint32_t plaintext_size) {
-  return autograph_padded_size(plaintext_size) + 16;
-}
+size_t autograph_key_pair_size() { return KEY_PAIR_SIZE; }
 
-uint32_t autograph_plaintext_size(const uint32_t ciphertext_size) {
-  return ciphertext_size - 16;
-}
+size_t autograph_public_key_size() { return PUBLIC_KEY_SIZE; }
 
-uint16_t autograph_session_size(const uint8_t *state) {
-  uint16_t size = autograph_state_size(state);
-  return autograph_ciphertext_size(size);
-}
+size_t autograph_safety_number_size() { return SAFETY_NUMBER_SIZE; }
 
-uint32_t autograph_subject_size(const uint32_t data_size) {
-  if (data_size > UINT32_MAX - 32) {
-    return UINT32_MAX;
-  }
-  return data_size + 32;
-}
+size_t autograph_secret_key_size() { return SECRET_KEY_SIZE; }
+
+size_t autograph_signature_size() { return SIGNATURE_SIZE; }
+
+size_t autograph_state_size() { return STATE_SIZE; }
+
+size_t autograph_index_size() { return INDEX_SIZE; }
+
+size_t autograph_size_size() { return SIZE_SIZE; }
