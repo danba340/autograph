@@ -53,7 +53,7 @@ const createPlaintext = (ciphertext: Uint8Array) => {
 }
 
 const createSessionCiphertext = (state: Uint8Array) => {
-  const size = autograph_session_size(state)
+  const size = autograph_ciphertext_size(autograph_session_size(state))
   return new Uint8Array(size)
 }
 

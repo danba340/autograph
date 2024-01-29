@@ -15,7 +15,7 @@ use crate::{
     external::{decrypt, encrypt, init, zeroize},
     kdf::kdf,
     key_exchange::{key_exchange, verify_key_exchange},
-    numbers::{get_uint32, get_uint64, set_uint64},
+    numbers::{read_index, read_size, set_size},
     state::{
         delete_skipped_index, get_receiving_index, get_receiving_key, get_receiving_nonce,
         get_sending_index, get_sending_key, get_sending_nonce, get_session, get_skipped_index,
@@ -126,11 +126,11 @@ fn calculate_unpadded_size(padded: &[u8]) -> usize {
 }
 
 fn unpad(unpadded_size: &mut Size, padded: &[u8]) -> bool {
-    let size = calculate_unpadded_size(padded) as u64;
+    let size = calculate_unpadded_size(padded);
     if size == 0 {
         return false;
     }
-    set_uint64(unpadded_size, 0, size);
+    set_size(unpadded_size, size);
     true
 }
 
@@ -266,24 +266,23 @@ pub fn open_session(state: &mut State, key: &mut SecretKey, ciphertext: &[u8]) -
     let success = decrypt_ciphertext(&mut plaintext, &mut plaintext_size, key, &nonce, ciphertext);
     zeroize(key);
     if success {
-        let size = get_uint64(&plaintext_size, 0) as usize;
+        let size = read_size(plaintext_size);
         state[..size].copy_from_slice(&plaintext[..size]);
     }
     success
 }
 
-fn read_index(index: Index) -> u32 {
-    get_uint32(&index, 0)
-}
-
 fn resize_plaintext(mut plaintext: Bytes, plaintext_size: Size) -> Bytes {
-    let size = get_uint64(&plaintext_size, 0) as usize;
-    plaintext.resize(size, 0);
+    plaintext.resize(read_size(plaintext_size), 0);
     plaintext
 }
 
+pub fn create_state() -> State {
+    [0; STATE_SIZE]
+}
+
 pub struct Channel<'a> {
-    state: &'a mut State,
+    pub state: &'a mut State,
 }
 
 impl<'a> Channel<'a> {
@@ -414,13 +413,9 @@ impl<'a> Channel<'a> {
     pub fn open(&mut self, key: &mut SecretKey, ciphertext: &[u8]) -> Result<(), Error> {
         let success = open_session(self.state, key, ciphertext);
         if !success {
-            Err(Error::KeyExchange)
+            Err(Error::Session)
         } else {
             Ok(())
         }
     }
-}
-
-pub fn create_state() -> State {
-    [0; STATE_SIZE]
 }

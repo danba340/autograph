@@ -1,3 +1,5 @@
+use crate::types::{Index, Size};
+
 pub fn get_uint32(bytes: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes([
         bytes[offset],
@@ -26,4 +28,16 @@ pub fn get_uint64(bytes: &[u8], offset: usize) -> u64 {
 
 pub fn set_uint64(bytes: &mut [u8], offset: usize, number: u64) {
     bytes[offset..offset + 8].copy_from_slice(number.to_be_bytes().as_slice());
+}
+
+pub fn read_index(index: Index) -> u32 {
+    get_uint32(&index, 0)
+}
+
+pub fn read_size(size: Size) -> usize {
+    get_uint64(&size, 0) as usize
+}
+
+pub fn set_size(bytes: &mut Size, size: usize) {
+    set_uint64(bytes, 0, size as u64)
 }

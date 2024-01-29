@@ -205,6 +205,7 @@ bool autograph_close_session(uint8_t *key, uint8_t *ciphertext,
   }
   size_t plaintext_size = autograph_session_size(state);
   uint8_t plaintext[plaintext_size];
+  memmove(plaintext, state, plaintext_size);
   uint8_t nonce[NONCE_SIZE];
   zeroize(nonce, NONCE_SIZE);
   bool success =

@@ -16,7 +16,7 @@ Bytes createPlaintext(const Bytes ciphertext) {
 }
 
 Bytes createSessionCiphertext(const State &state) {
-  size_t size = autograph_session_size(state.data());
+  size_t size = autograph_ciphertext_size(autograph_session_size(state.data()));
   Bytes ciphertext(size);
   return ciphertext;
 }
