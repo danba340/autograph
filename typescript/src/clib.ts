@@ -65,8 +65,8 @@ export const ready = async () => {
 export const autograph_identity_key_pair = (key_pair: Uint8Array) =>
   call('autograph_identity_key_pair', 'boolean', key_pair) as boolean
 
-export const autograph_key_pair = (key_pair: Uint8Array) =>
-  call('autograph_key_pair', 'boolean', key_pair) as boolean
+export const autograph_ephemeral_key_pair = (key_pair: Uint8Array) =>
+  call('autograph_ephemeral_key_pair', 'boolean', key_pair) as boolean
 
 export const autograph_use_key_pairs = (
   public_keys: Uint8Array,

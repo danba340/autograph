@@ -10,7 +10,7 @@ tuple<bool, KeyPair> generateIdentityKeyPair() {
 
 tuple<bool, KeyPair> generateKeyPair() {
   KeyPair keyPair;
-  bool success = autograph_key_pair(keyPair.data());
+  bool success = autograph_ephemeral_key_pair(keyPair.data());
   return make_tuple(success, keyPair);
 }
 

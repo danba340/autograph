@@ -4,7 +4,7 @@ target_compile_options(${AUTOGRAPH_TARGET} PRIVATE -Os)
 
 set(AUTOGRAPH_EXPORTED_FUNCTIONS
     autograph_identity_key_pair
-    autograph_key_pair
+    autograph_ephemeral_key_pair
     autograph_use_key_pairs
     autograph_use_public_keys
     autograph_authenticate
