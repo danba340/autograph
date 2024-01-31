@@ -282,7 +282,7 @@ pub fn create_state() -> State {
 }
 
 pub struct Channel<'a> {
-    pub state: &'a mut State,
+    state: &'a mut State,
 }
 
 impl<'a> Channel<'a> {
