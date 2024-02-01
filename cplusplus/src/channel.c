@@ -129,7 +129,8 @@ bool decrypt_skipped(uint8_t *plaintext, uint8_t *plaintext_size,
   uint8_t *key = get_receiving_key(state);
   uint8_t nonce[NONCE_SIZE];
   size_t offset = get_skipped_index(index, nonce, state, 0);
-  while (offset > 0) {
+  size_t session_size = autograph_session_size(state);
+  while (offset <= session_size) {
     if (decrypt_ciphertext(plaintext, plaintext_size, key, nonce, ciphertext,
                            ciphertext_size)) {
       delete_skipped_index(state, offset);

@@ -17,11 +17,11 @@ use crate::{
     key_exchange::{key_exchange, verify_key_exchange},
     numbers::{read_index, read_size, set_size},
     state::{
-        delete_skipped_index, get_receiving_index, get_receiving_key, get_receiving_nonce,
-        get_sending_index, get_sending_key, get_sending_nonce, get_session, get_skipped_index,
-        get_their_identity_key, increment_receiving_index, increment_sending_index,
-        set_ephemeral_key_pair, set_identity_key_pair, set_their_ephemeral_key,
-        set_their_identity_key, skip_index,
+        calculate_session_size, delete_skipped_index, get_receiving_index, get_receiving_key,
+        get_receiving_nonce, get_sending_index, get_sending_key, get_sending_nonce, get_session,
+        get_skipped_index, get_their_identity_key, increment_receiving_index,
+        increment_sending_index, set_ephemeral_key_pair, set_identity_key_pair,
+        set_their_ephemeral_key, set_their_identity_key, skip_index,
     },
     types::{
         Bytes, Hello, Index, KeyPair, Nonce, Okm, PublicKey, SafetyNumber, SecretKey, Signature,
@@ -173,7 +173,8 @@ fn decrypt_skipped(
     let key = get_receiving_key(state);
     let mut nonce: Nonce = [0; NONCE_SIZE];
     let mut offset = get_skipped_index(index, &mut nonce, state, 0);
-    while offset > 0 {
+    let session_size = calculate_session_size(state);
+    while offset <= session_size {
         if decrypt_ciphertext(plaintext, plaintext_size, key, &nonce, ciphertext) {
             delete_skipped_index(state, offset);
             return true;
