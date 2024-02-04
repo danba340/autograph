@@ -1,4 +1,4 @@
-use autograph::{
+use autograph_protocol::{
     Bytes, Channel, KeyPair, PublicKey, SafetyNumber, Signature, State, SECRET_KEY_SIZE, STATE_SIZE,
 };
 

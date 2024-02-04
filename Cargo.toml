@@ -25,7 +25,7 @@ keywords = [
 repository = "https://github.com/christoffercarlsson/autograph"
 
 [lib]
-name = "autograph"
+name = "autograph_protocol"
 path = "rust/src/lib.rs"
 
 [[test]]
