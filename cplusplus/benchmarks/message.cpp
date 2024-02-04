@@ -33,7 +33,7 @@ static void decrypt_message(benchmark::State& benchmarkState) {
 
   for (auto _ : benchmarkState) {
     std::copy(initialState.begin(), initialState.end(), state.begin());
-    std::fill(initialState.begin() + 184, state.end(), 0);
+    std::fill(state.begin() + 184, state.end(), 0);
     if (!autograph_decrypt_message(plaintext.data(), plaintextSize.data(),
                                    index.data(), state.data(),
                                    ciphertext.data(), ciphertext.size())) {
