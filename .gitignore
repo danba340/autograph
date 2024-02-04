@@ -5,54 +5,17 @@
 *.log
 *.tgz
 
-# IDE-specific files
-.vscode/
-*.xcodeproj
-
-# Compiled object files
-*.o
-*.obj
-
-# Executables
-*.exe
-*.out
-
 # C++-specific files
-build/
 cplusplus/build/
-cplusplus/bin/
-cplusplus/lib/
-.cmake/
-.cache/
-CMakeCache.txt
-CMakeFiles/
-Makefile
-cmake_install.cmake
-compile_commands.json
-install_manifest.txt
 
 # Rust-specific files
 rust/target/
+Cargo.lock
 
 # Swift-specific files
 .build/
 .swiftpm/
-swift/.build/
-swift/Packages/
-swift/xcuserdata/
-swift/DerivedData/
-swift/.swiftpm/config/registries.json
-swift/.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
-swift/.netrc
 
 # TypeScript-specific files
-coverage/
-dist/
+typescript/dist/
 node_modules/
-
-# generated types
-.astro/
-
-# environment variables
-.env
-.env.production
