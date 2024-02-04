@@ -1,6 +1,7 @@
 {
-  "name": "@christoffercarlsson/autograph",
-  "version": "0.20.0",
+  "private": true,
+  "name": "autograph-protocol",
+  "version": "0.5.0",
   "description": "A TypeScript implementation of the Autograph protocol",
   "author": "Christoffer Carlsson <cc@christofferc.com>",
   "bugs": {
