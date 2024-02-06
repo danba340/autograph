@@ -14,17 +14,17 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Clibautograph",
-            path: "swift/Clibautograph.xcframework"
+            path: "apple/Clibautograph.xcframework"
         ),
         .target(
             name: "Autograph",
             dependencies: ["Clibautograph"],
-            path: "swift/Sources/Autograph"
+            path: "apple/Sources/Autograph"
         ),
         .testTarget(
             name: "AutographTests",
             dependencies: ["Autograph"],
-            path: "swift/Tests/AutographTests"
+            path: "apple/Tests/AutographTests"
         ),
     ]
 )

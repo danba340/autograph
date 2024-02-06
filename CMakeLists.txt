@@ -16,6 +16,13 @@ if(NOT DEFINED PROJECT_NAME)
 endif()
 
 include(cplusplus/cmake/sources.cmake)
+
+if(DEFINED EMSCRIPTEN)
+  include(cplusplus/cmake/emscripten.cmake)
+else()
+  add_library(${AUTOGRAPH_TARGET} STATIC ${AUTOGRAPH_SOURCES})
+endif()
+
 include(cplusplus/cmake/targets.cmake)
 include(cplusplus/cmake/benchmarks.cmake)
 include(cplusplus/cmake/tests.cmake)

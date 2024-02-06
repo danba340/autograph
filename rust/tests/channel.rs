@@ -139,7 +139,7 @@ fn test_channel() {
         alice_handshake,
         bob_handshake,
     );
-    test_safety_number(&a, &b, safety_number);
+    test_authenticate(&a, &b, safety_number);
     test_alice_message_to_bob(&mut a, &mut b, &data, alice_message);
     test_bob_message_to_alice(&mut a, &mut b, &data, bob_message);
     test_bob_certify_alice_data(&b, &data, bob_signature_alice_data);
@@ -187,7 +187,7 @@ fn test_key_exchange(
 }
 
 // Should calculate safety numbers correctly
-fn test_safety_number(a: &Channel, b: &Channel, safety_number: SafetyNumber) {
+fn test_authenticate(a: &Channel, b: &Channel, safety_number: SafetyNumber) {
     let alice_safety_number = a.authenticate().unwrap();
     let bob_safety_number = b.authenticate().unwrap();
     assert_eq!(alice_safety_number.to_vec(), safety_number);

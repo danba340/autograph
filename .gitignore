@@ -4,6 +4,15 @@
 *~
 *.log
 *.tgz
+.cache/
+
+# Android-specified files
+.idea/
+.gradle/
+android/.cxx/
+android/build/
+local.properties
+*.iml
 
 # C++-specific files
 cplusplus/build/
