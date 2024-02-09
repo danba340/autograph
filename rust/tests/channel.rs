@@ -5,17 +5,17 @@ use autograph_protocol::{
 #[test]
 fn test_channel() {
     let alice_handshake: Signature = [
-        108, 221, 39, 135, 29, 232, 233, 41, 202, 186, 132, 24, 139, 184, 148, 25, 176, 220, 36,
-        233, 141, 198, 70, 202, 20, 200, 68, 236, 107, 159, 123, 139, 153, 154, 90, 113, 25, 157,
-        63, 161, 100, 176, 57, 50, 216, 252, 93, 76, 25, 164, 40, 82, 84, 224, 230, 141, 109, 246,
-        107, 3, 238, 97, 56, 4,
+        19, 133, 19, 97, 135, 34, 43, 49, 100, 198, 150, 205, 26, 151, 20, 127, 115, 193, 120, 209,
+        25, 46, 221, 194, 223, 118, 62, 0, 135, 6, 112, 250, 198, 247, 231, 85, 152, 245, 201, 47,
+        180, 83, 200, 165, 154, 43, 133, 97, 27, 25, 35, 233, 170, 220, 170, 38, 185, 233, 61, 160,
+        12, 117, 73, 8,
     ];
 
     let bob_handshake: Signature = [
-        250, 223, 89, 191, 184, 213, 155, 233, 5, 153, 109, 133, 148, 152, 247, 25, 100, 247, 219,
-        247, 174, 18, 52, 119, 23, 0, 229, 18, 104, 158, 177, 221, 100, 44, 83, 20, 129, 129, 39,
-        156, 119, 247, 59, 12, 220, 184, 207, 44, 211, 160, 50, 225, 163, 106, 15, 116, 0, 104, 33,
-        153, 120, 111, 170, 11,
+        89, 193, 59, 76, 215, 36, 171, 145, 63, 32, 134, 60, 225, 112, 136, 191, 176, 64, 42, 18,
+        210, 2, 33, 212, 243, 245, 230, 147, 182, 20, 81, 101, 170, 221, 69, 164, 224, 166, 188,
+        170, 197, 114, 55, 218, 48, 218, 29, 56, 98, 91, 236, 12, 10, 64, 82, 140, 15, 76, 243,
+        188, 24, 236, 62, 5,
     ];
 
     let alice_message = vec![
@@ -182,16 +182,16 @@ fn test_key_exchange(
     let handshake_bob = b.key_exchange(false).unwrap();
     a.verify_key_exchange(handshake_bob).unwrap();
     b.verify_key_exchange(handshake_alice).unwrap();
-    assert_eq!(handshake_alice.to_vec(), alice_handshake);
-    assert_eq!(handshake_bob.to_vec(), bob_handshake);
+    assert_eq!(handshake_alice, alice_handshake);
+    assert_eq!(handshake_bob, bob_handshake);
 }
 
 // Should calculate safety numbers correctly
 fn test_authenticate(a: &Channel, b: &Channel, safety_number: SafetyNumber) {
     let alice_safety_number = a.authenticate().unwrap();
     let bob_safety_number = b.authenticate().unwrap();
-    assert_eq!(alice_safety_number.to_vec(), safety_number);
-    assert_eq!(bob_safety_number.to_vec(), safety_number);
+    assert_eq!(alice_safety_number, safety_number);
+    assert_eq!(bob_safety_number, safety_number);
 }
 
 // Should allow Alice to send encrypted data to Bob

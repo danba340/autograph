@@ -100,6 +100,22 @@ void set_their_ephemeral_key(uint8_t *state, const uint8_t *public_key) {
   memmove(get_their_ephemeral_key(state), public_key, PUBLIC_KEY_SIZE);
 }
 
+void set_transcript(uint8_t *state, bool is_initiator) {
+  if (is_initiator) {
+    memmove(state + TRANSCRIPT_OFFSET, get_ephemeral_public_key(state),
+            PUBLIC_KEY_SIZE);
+    memmove(state + TRANSCRIPT_OFFSET + PUBLIC_KEY_SIZE,
+            get_their_ephemeral_key(state), PUBLIC_KEY_SIZE);
+  } else {
+    memmove(state + TRANSCRIPT_OFFSET, get_their_ephemeral_key(state),
+            PUBLIC_KEY_SIZE);
+    memmove(state + TRANSCRIPT_OFFSET + PUBLIC_KEY_SIZE,
+            get_ephemeral_public_key(state), PUBLIC_KEY_SIZE);
+  }
+}
+
+uint8_t *get_transcript(uint8_t *state) { return state + TRANSCRIPT_OFFSET; }
+
 void zeroize_skipped_indexes(uint8_t *state) {
   zeroize(state + SKIPPED_INDEXES_MIN_OFFSET,
           STATE_SIZE - SKIPPED_INDEXES_MIN_OFFSET);

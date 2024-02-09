@@ -5,11 +5,11 @@ use crate::{
         PUBLIC_KEY_SIZE, RECEIVING_INDEX_OFFSET, RECEIVING_KEY_OFFSET, RECEIVING_NONCE_OFFSET,
         SECRET_KEY_SIZE, SENDING_INDEX_OFFSET, SENDING_KEY_OFFSET, SENDING_NONCE_OFFSET,
         SKIPPED_INDEXES_MAX_OFFSET, SKIPPED_INDEXES_MIN_OFFSET, STATE_SIZE,
-        THEIR_EPHEMERAL_KEY_OFFSET, THEIR_IDENTITY_KEY_OFFSET,
+        THEIR_EPHEMERAL_KEY_OFFSET, THEIR_IDENTITY_KEY_OFFSET, TRANSCRIPT_OFFSET, TRANSCRIPT_SIZE,
     },
     external::zeroize,
     numbers::{get_uint32, set_uint32},
-    types::{Index, KeyPair, Nonce, Okm, PrivateKey, PublicKey, SecretKey, State},
+    types::{Index, KeyPair, Nonce, Okm, PrivateKey, PublicKey, SecretKey, State, Transcript},
 };
 
 pub fn set_identity_key_pair(state: &mut State, key_pair: &KeyPair) {
@@ -122,12 +122,6 @@ pub fn delete_ephemeral_private_key(state: &mut State) {
     zeroize(&mut state[EPHEMERAL_KEY_PAIR_OFFSET..EPHEMERAL_KEY_PAIR_OFFSET + PRIVATE_KEY_SIZE]);
 }
 
-pub fn get_ephemeral_public_key(state: &State) -> &PublicKey {
-    state[EPHEMERAL_PUBLIC_KEY_OFFSET..EPHEMERAL_PUBLIC_KEY_OFFSET + PUBLIC_KEY_SIZE]
-        .try_into()
-        .unwrap_or(&[0; PUBLIC_KEY_SIZE])
-}
-
 pub fn get_their_ephemeral_key(state: &State) -> &PublicKey {
     state[THEIR_EPHEMERAL_KEY_OFFSET..THEIR_EPHEMERAL_KEY_OFFSET + PUBLIC_KEY_SIZE]
         .try_into()
@@ -137,6 +131,34 @@ pub fn get_their_ephemeral_key(state: &State) -> &PublicKey {
 pub fn set_their_ephemeral_key(state: &mut State, public_key: &PublicKey) {
     state[THEIR_EPHEMERAL_KEY_OFFSET..THEIR_EPHEMERAL_KEY_OFFSET + PUBLIC_KEY_SIZE]
         .copy_from_slice(public_key);
+}
+
+pub fn set_transcript(state: &mut State, is_initiator: bool) {
+    if is_initiator {
+        state.copy_within(
+            EPHEMERAL_PUBLIC_KEY_OFFSET..EPHEMERAL_PUBLIC_KEY_OFFSET + PUBLIC_KEY_SIZE,
+            TRANSCRIPT_OFFSET,
+        );
+        state.copy_within(
+            THEIR_EPHEMERAL_KEY_OFFSET..THEIR_EPHEMERAL_KEY_OFFSET + PUBLIC_KEY_SIZE,
+            TRANSCRIPT_OFFSET + PUBLIC_KEY_SIZE,
+        );
+    } else {
+        state.copy_within(
+            THEIR_EPHEMERAL_KEY_OFFSET..THEIR_EPHEMERAL_KEY_OFFSET + PUBLIC_KEY_SIZE,
+            TRANSCRIPT_OFFSET,
+        );
+        state.copy_within(
+            EPHEMERAL_PUBLIC_KEY_OFFSET..EPHEMERAL_PUBLIC_KEY_OFFSET + PUBLIC_KEY_SIZE,
+            TRANSCRIPT_OFFSET + PUBLIC_KEY_SIZE,
+        );
+    }
+}
+
+pub fn get_transcript(state: &State) -> &Transcript {
+    state[TRANSCRIPT_OFFSET..TRANSCRIPT_OFFSET + TRANSCRIPT_SIZE]
+        .try_into()
+        .unwrap_or(&[0; TRANSCRIPT_SIZE])
 }
 
 pub fn zeroize_skipped_indexes(state: &mut State) {

@@ -43,11 +43,13 @@ uint8_t *get_ephemeral_private_key(uint8_t *state);
 
 void delete_ephemeral_private_key(uint8_t *state);
 
-uint8_t *get_ephemeral_public_key(uint8_t *state);
-
 uint8_t *get_their_ephemeral_key(uint8_t *state);
 
 void set_their_ephemeral_key(uint8_t *state, const uint8_t *public_key);
+
+void set_transcript(uint8_t *state, bool is_initiator);
+
+uint8_t *get_transcript(uint8_t *state);
 
 void zeroize_skipped_indexes(uint8_t *state);
 
