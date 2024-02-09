@@ -117,8 +117,6 @@ describe('Channel', () => {
   let bobState: Uint8Array
   let a: Channel
   let b: Channel
-  let aliceVerified: boolean
-  let bobVerified: boolean
   let handshakeAlice: Uint8Array
   let handshakeBob: Uint8Array
 
@@ -148,47 +146,38 @@ describe('Channel', () => {
     a = new Channel(aliceState)
     b = new Channel(bobState)
 
-    const [, aliceHello] = a.useKeyPairs(
+    const aliceHello = a.useKeyPairs(
       aliceIdentityKeyPair,
       aliceEphemeralKeyPair
     )
 
-    const [, bobHello] = b.useKeyPairs(bobIdentityKeyPair, bobEphemeralKeyPair)
+    const bobHello = b.useKeyPairs(bobIdentityKeyPair, bobEphemeralKeyPair)
 
     a.usePublicKeys(bobHello)
     b.usePublicKeys(aliceHello)
 
-    const [, aliceSignature] = a.keyExchange(true)
-    const [, bobSignature] = b.keyExchange(false)
+    handshakeAlice = a.keyExchange(true)
+    handshakeBob = b.keyExchange(false)
 
-    handshakeAlice = aliceSignature
-    handshakeBob = bobSignature
-
-    aliceVerified = a.verifyKeyExchange(handshakeBob)
-    bobVerified = b.verifyKeyExchange(handshakeAlice)
+    a.verifyKeyExchange(handshakeBob)
+    b.verifyKeyExchange(handshakeAlice)
   })
 
   it('should allow Alice and Bob to perform a key exchange', () => {
-    expect(aliceVerified).toBe(true)
-    expect(bobVerified).toBe(true)
     expect(handshakeAlice).toEqual(aliceHandshake)
     expect(handshakeBob).toEqual(bobHandshake)
   })
 
   it('should calculate safety numbers correctly', () => {
-    const [aliceSuccess, aliceSafetyNumber] = a.authenticate()
-    const [bobSuccess, bobSafetyNumber] = b.authenticate()
-    expect(aliceSuccess).toBe(true)
-    expect(bobSuccess).toBe(true)
+    const aliceSafetyNumber = a.authenticate()
+    const bobSafetyNumber = b.authenticate()
     expect(aliceSafetyNumber).toEqual(safetyNumber)
     expect(bobSafetyNumber).toEqual(safetyNumber)
   })
 
   it('should allow Alice to send encrypted data to Bob', () => {
-    const [encryptSuccess, encryptIndex, message] = a.encrypt(data)
-    const [decryptSuccess, decryptIndex, plaintext] = b.decrypt(message)
-    expect(encryptSuccess).toBe(true)
-    expect(decryptSuccess).toBe(true)
+    const [encryptIndex, message] = a.encrypt(data)
+    const [decryptIndex, plaintext] = b.decrypt(message)
     expect(encryptIndex).toBe(1)
     expect(decryptIndex).toBe(1)
     expect(message).toEqual(aliceMessage)
@@ -196,33 +185,29 @@ describe('Channel', () => {
   })
 
   it('should allow Bob to send encrypted data to Alice', () => {
-    const [, , message] = b.encrypt(data)
-    const [, , plaintext] = a.decrypt(message)
+    const [, message] = b.encrypt(data)
+    const [, plaintext] = a.decrypt(message)
     expect(message).toEqual(bobMessage)
     expect(plaintext).toEqual(data)
   })
 
   it("should allow Bob to certify Alice's ownership of her identity key and data", () => {
-    const [success, signature] = b.certifyData(data)
-    expect(success).toBe(true)
+    const signature = b.certifyData(data)
     expect(signature).toEqual(bobSignatureAliceData)
   })
 
   it("should allow Alice to certify Bob's ownership of his identity key and data", () => {
-    const [success, signature] = a.certifyData(data)
-    expect(success).toBe(true)
+    const signature = a.certifyData(data)
     expect(signature).toEqual(aliceSignatureBobData)
   })
 
   it("should allow Bob to certify Alice's ownership of her identity key", () => {
-    const [success, signature] = b.certifyIdentity()
-    expect(success).toBe(true)
+    const signature = b.certifyIdentity()
     expect(signature).toEqual(bobSignatureAliceIdentity)
   })
 
   it("should allow Alice to certify Bob's ownership of his identity key", () => {
-    const [success, signature] = a.certifyIdentity()
-    expect(success).toBe(true)
+    const signature = a.certifyIdentity()
     expect(signature).toEqual(aliceSignatureBobIdentity)
   })
 
@@ -255,18 +240,14 @@ describe('Channel', () => {
     const data2 = Uint8Array.from([4, 5, 6])
     const data3 = Uint8Array.from([7, 8, 9])
     const data4 = Uint8Array.from([10, 11, 12])
-    const [, , message1] = a.encrypt(data1)
-    const [, , message2] = a.encrypt(data2)
-    const [, , message3] = a.encrypt(data3)
-    const [, , message4] = a.encrypt(data4)
-    const [success4, index4, plaintext4] = b.decrypt(message4)
-    const [success2, index2, plaintext2] = b.decrypt(message2)
-    const [success3, index3, plaintext3] = b.decrypt(message3)
-    const [success1, index1, plaintext1] = b.decrypt(message1)
-    expect(success1).toBe(true)
-    expect(success2).toBe(true)
-    expect(success3).toBe(true)
-    expect(success4).toBe(true)
+    const [, message1] = a.encrypt(data1)
+    const [, message2] = a.encrypt(data2)
+    const [, message3] = a.encrypt(data3)
+    const [, message4] = a.encrypt(data4)
+    const [index4, plaintext4] = b.decrypt(message4)
+    const [index2, plaintext2] = b.decrypt(message2)
+    const [index3, plaintext3] = b.decrypt(message3)
+    const [index1, plaintext1] = b.decrypt(message1)
     expect(index1).toEqual(1)
     expect(index2).toEqual(2)
     expect(index3).toEqual(3)
@@ -278,12 +259,9 @@ describe('Channel', () => {
   })
 
   it('should handle sessions correctly', () => {
-    const [closeSuccess, key, ciphertext] = a.close()
-    const openSuccess = b.open(key, ciphertext)
-    const [certifySuccess, signature] = b.certifyIdentity()
-    expect(closeSuccess).toBe(true)
-    expect(openSuccess).toBe(true)
-    expect(certifySuccess).toBe(true)
+    const [key, ciphertext] = a.close()
+    b.open(key, ciphertext)
+    const signature = b.certifyIdentity()
     expect(signature).toEqual(aliceSignatureBobIdentity)
   })
 })

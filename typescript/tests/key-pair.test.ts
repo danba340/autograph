@@ -12,15 +12,13 @@ describe('Key pair', () => {
   })
 
   it('should generate identity key pairs', () => {
-    const [success, keyPair] = generateIdentityKeyPair()
-    expect(success).toBe(true)
+    const keyPair = generateIdentityKeyPair()
     expect(keyPair.byteLength).toBe(64)
     expect(keyPair).not.toEqual(emptyKeyPair)
   })
 
   it('should generate ephemeral key pairs', () => {
-    const [success, keyPair] = generateKeyPair()
-    expect(success).toBe(true)
+    const keyPair = generateKeyPair()
     expect(keyPair.byteLength).toBe(64)
     expect(keyPair).not.toEqual(emptyKeyPair)
   })

@@ -72,7 +72,7 @@ export default class Channel {
   useKeyPairs(
     identityKeyPair: Uint8Array,
     ephemeralKeyPair: Uint8Array
-  ): [boolean, Uint8Array] {
+  ): Uint8Array {
     const publicKeys = createHello()
     const success = autograph_use_key_pairs(
       publicKeys,
@@ -80,30 +80,42 @@ export default class Channel {
       identityKeyPair,
       ephemeralKeyPair
     )
-    return [success, publicKeys]
+    if (!success) {
+      throw new Error('Initialization failed')
+    }
+    return publicKeys
   }
 
   usePublicKeys(publicKeys: Uint8Array) {
     autograph_use_public_keys(this.state, publicKeys)
   }
 
-  authenticate(): [boolean, Uint8Array] {
+  authenticate(): Uint8Array {
     const safetyNumber = createSafetyNumber()
     const success = autograph_authenticate(safetyNumber, this.state)
-    return [success, safetyNumber]
+    if (!success) {
+      throw new Error('Authentication failed')
+    }
+    return safetyNumber
   }
 
-  keyExchange(isInitiator: boolean): [boolean, Uint8Array] {
+  keyExchange(isInitiator: boolean): Uint8Array {
     const signature = createSignature()
     const success = autograph_key_exchange(signature, this.state, isInitiator)
-    return [success, signature]
+    if (!success) {
+      throw new Error('Key exchange failed')
+    }
+    return signature
   }
 
-  verifyKeyExchange(signature: Uint8Array): boolean {
-    return autograph_verify_key_exchange(this.state, signature)
+  verifyKeyExchange(signature: Uint8Array) {
+    const success = autograph_verify_key_exchange(this.state, signature)
+    if (!success) {
+      throw new Error('Key exchange verification failed')
+    }
   }
 
-  encrypt(plaintext: Uint8Array): [boolean, number, Uint8Array] {
+  encrypt(plaintext: Uint8Array): [number, Uint8Array] {
     const ciphertext = createCiphertext(plaintext)
     const index = createIndex()
     const success = autograph_encrypt_message(
@@ -113,10 +125,13 @@ export default class Channel {
       plaintext,
       plaintext.byteLength
     )
-    return [success, readIndex(index), ciphertext]
+    if (!success) {
+      throw new Error('Encryption failed')
+    }
+    return [readIndex(index), ciphertext]
   }
 
-  decrypt(ciphertext: Uint8Array): [boolean, number, Uint8Array] {
+  decrypt(ciphertext: Uint8Array): [number, Uint8Array] {
     const plaintext = createPlaintext(ciphertext)
     const index = createIndex()
     const size = createSize()
@@ -128,10 +143,13 @@ export default class Channel {
       ciphertext,
       ciphertext.byteLength
     )
-    return [success, readIndex(index), resizePlaintext(plaintext, size)]
+    if (!success) {
+      throw new Error('Decryption failed')
+    }
+    return [readIndex(index), resizePlaintext(plaintext, size)]
   }
 
-  certifyData(data: Uint8Array): [boolean, Uint8Array] {
+  certifyData(data: Uint8Array): Uint8Array {
     const signature = createSignature()
     const success = autograph_certify_data(
       signature,
@@ -139,13 +157,19 @@ export default class Channel {
       data,
       data.byteLength
     )
-    return [success, signature]
+    if (!success) {
+      throw new Error('Certification failed')
+    }
+    return signature
   }
 
-  certifyIdentity(): [boolean, Uint8Array] {
+  certifyIdentity(): Uint8Array {
     const signature = createSignature()
     const success = autograph_certify_identity(signature, this.state)
-    return [success, signature]
+    if (!success) {
+      throw new Error('Certification failed')
+    }
+    return signature
   }
 
   verifyData(
@@ -166,19 +190,25 @@ export default class Channel {
     return autograph_verify_identity(this.state, publicKey, signature)
   }
 
-  close(): [boolean, Uint8Array, Uint8Array] {
+  close(): [Uint8Array, Uint8Array] {
     const key = createSecretKey()
     const ciphertext = createSessionCiphertext(this.state)
     const success = autograph_close_session(key, ciphertext, this.state)
-    return [success, key, ciphertext]
+    if (!success) {
+      throw new Error('Failed to close session')
+    }
+    return [key, ciphertext]
   }
 
-  open(key: Uint8Array, ciphertext: Uint8Array): boolean {
-    return autograph_open_session(
+  open(key: Uint8Array, ciphertext: Uint8Array) {
+    const success = autograph_open_session(
       this.state,
       key,
       ciphertext,
       ciphertext.byteLength
     )
+    if (!success) {
+      throw new Error('Failed to open session')
+    }
   }
 }
