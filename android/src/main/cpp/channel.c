@@ -2,44 +2,100 @@
 
 #include "autograph.h"
 
-JNIEXPORT jint JNICALL Java_sh_autograph_Channel_autographCiphertextSize(
-    JNIEnv* env, jobject obj, jint plaintext_size) {
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographHelloSize(JNIEnv* env,
+                                                            jclass class) {
+  return (jint)autograph_hello_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographPublicKeySize(JNIEnv* env,
+                                                                jclass class) {
+  return (jint)autograph_public_key_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographSafetyNumberSize(
+    JNIEnv* env, jclass class) {
+  return (jint)autograph_safety_number_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographSecretKeySize(JNIEnv* env,
+                                                                jclass class) {
+  return (jint)autograph_secret_key_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographSignatureSize(JNIEnv* env,
+                                                                jclass class) {
+  return (jint)autograph_signature_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographStateSize(JNIEnv* env,
+                                                            jclass class) {
+  return (jint)autograph_state_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographIndexSize(JNIEnv* env,
+                                                            jclass class) {
+  return (jint)autograph_index_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographSizeSize(JNIEnv* env,
+                                                           jclass class) {
+  return (jint)autograph_size_size();
+}
+
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographCiphertextSize(
+    JNIEnv* env, jclass class, jint plaintext_size) {
   size_t size = autograph_ciphertext_size((size_t)plaintext_size);
   return (jint)size;
 }
 
-JNIEXPORT jint JNICALL Java_sh_autograph_Channel_autographPlaintextSize(
-    JNIEnv* env, jobject obj, jint ciphertext_size) {
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographPlaintextSize(
+    JNIEnv* env, jclass class, jint ciphertext_size) {
   size_t size = autograph_plaintext_size((size_t)ciphertext_size);
   return (jint)size;
 }
 
-JNIEXPORT jint JNICALL Java_sh_autograph_Channel_autographSessionSize(
-    JNIEnv* env, jobject obj, jbyteArray state) {
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographSessionSize(
+    JNIEnv* env, jclass class, jbyteArray state) {
   jbyte* elements = (*env)->GetByteArrayElements(env, state, NULL);
   size_t size = autograph_session_size((uint8_t*)elements);
   (*env)->ReleaseByteArrayElements(env, state, elements, 0);
   return (jint)size;
 }
 
-JNIEXPORT jint JNICALL Java_sh_autograph_Channel_autographReadIndex(
-    JNIEnv* env, jobject obj, jbyteArray index) {
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographReadIndex(JNIEnv* env,
+                                                            jclass class,
+                                                            jbyteArray index) {
   jbyte* elements = (*env)->GetByteArrayElements(env, index, NULL);
   size_t size = autograph_read_index((uint8_t*)elements);
   (*env)->ReleaseByteArrayElements(env, index, elements, 0);
   return (jint)size;
 }
 
-JNIEXPORT jint JNICALL Java_sh_autograph_Channel_autographReadSize(
-    JNIEnv* env, jobject obj, jbyteArray size) {
+JNIEXPORT jint JNICALL
+Java_sh_autograph_Channel_00024Companion_autographReadSize(JNIEnv* env,
+                                                           jclass class,
+                                                           jbyteArray size) {
   jbyte* elements = (*env)->GetByteArrayElements(env, size, NULL);
   size_t s = autograph_read_size((uint8_t*)elements);
   (*env)->ReleaseByteArrayElements(env, size, elements, 0);
   return (jint)s;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographUseKeyPairs(
-    JNIEnv* env, jobject obj, jbyteArray public_keys, jbyteArray state,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographUseKeyPairs(
+    JNIEnv* env, jclass class, jbyteArray public_keys, jbyteArray state,
     jbyteArray identity_key_pair, jbyteArray ephemeral_key_pair) {
   jbyte* public_keys_elements =
       (*env)->GetByteArrayElements(env, public_keys, NULL);
@@ -61,8 +117,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographUseKeyPairs(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT void JNICALL Java_sh_autograph_Channel_autographUsePublicKeys(
-    JNIEnv* env, jobject obj, jbyteArray state, jbyteArray public_keys) {
+JNIEXPORT void JNICALL
+Java_sh_autograph_Channel_00024Companion_autographUsePublicKeys(
+    JNIEnv* env, jclass class, jbyteArray state, jbyteArray public_keys) {
   jbyte* state_elements = (*env)->GetByteArrayElements(env, state, NULL);
   jbyte* public_keys_elements =
       (*env)->GetByteArrayElements(env, public_keys, NULL);
@@ -72,8 +129,9 @@ JNIEXPORT void JNICALL Java_sh_autograph_Channel_autographUsePublicKeys(
   (*env)->ReleaseByteArrayElements(env, public_keys, public_keys_elements, 0);
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographAuthenticate(
-    JNIEnv* env, jobject obj, jbyteArray safety_number, jbyteArray state) {
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographAuthenticate(
+    JNIEnv* env, jclass class, jbyteArray safety_number, jbyteArray state) {
   jbyte* safety_number_elements =
       (*env)->GetByteArrayElements(env, safety_number, NULL);
   jbyte* state_elements = (*env)->GetByteArrayElements(env, state, NULL);
@@ -85,8 +143,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographAuthenticate(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographKeyExchange(
-    JNIEnv* env, jobject obj, jbyteArray signature, jbyteArray state,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographKeyExchange(
+    JNIEnv* env, jclass class, jbyteArray signature, jbyteArray state,
     jboolean is_initiator) {
   jbyte* signature_elements =
       (*env)->GetByteArrayElements(env, signature, NULL);
@@ -99,8 +158,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographKeyExchange(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographVerifyKeyExchange(
-    JNIEnv* env, jobject obj, jbyteArray state, jbyteArray signature) {
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographVerifyKeyExchange(
+    JNIEnv* env, jclass class, jbyteArray state, jbyteArray signature) {
   jbyte* state_elements = (*env)->GetByteArrayElements(env, state, NULL);
   jbyte* signature_elements =
       (*env)->GetByteArrayElements(env, signature, NULL);
@@ -111,8 +171,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographVerifyKeyExchange(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographEncryptMessage(
-    JNIEnv* env, jobject obj, jbyteArray ciphertext, jbyteArray index,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographEncryptMessage(
+    JNIEnv* env, jclass class, jbyteArray ciphertext, jbyteArray index,
     jbyteArray state, jbyteArray plaintext) {
   jbyte* ciphertext_elements =
       (*env)->GetByteArrayElements(env, ciphertext, NULL);
@@ -132,8 +193,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographEncryptMessage(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographDecryptMessage(
-    JNIEnv* env, jobject obj, jbyteArray plaintext, jbyteArray plaintext_size,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographDecryptMessage(
+    JNIEnv* env, jclass class, jbyteArray plaintext, jbyteArray plaintext_size,
     jbyteArray index, jbyteArray state, jbyteArray ciphertext) {
   jbyte* plaintext_elements =
       (*env)->GetByteArrayElements(env, plaintext, NULL);
@@ -157,8 +219,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographDecryptMessage(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographCertifyData(
-    JNIEnv* env, jobject obj, jbyteArray signature, jbyteArray state,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographCertifyData(
+    JNIEnv* env, jclass class, jbyteArray signature, jbyteArray state,
     jbyteArray data) {
   jbyte* signature_elements =
       (*env)->GetByteArrayElements(env, signature, NULL);
@@ -174,8 +237,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographCertifyData(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographCertifyIdentity(
-    JNIEnv* env, jobject obj, jbyteArray signature, jbyteArray state) {
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographCertifyIdentity(
+    JNIEnv* env, jclass class, jbyteArray signature, jbyteArray state) {
   jbyte* signature_elements =
       (*env)->GetByteArrayElements(env, signature, NULL);
   jbyte* state_elements = (*env)->GetByteArrayElements(env, state, NULL);
@@ -186,8 +250,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographCertifyIdentity(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographVerifyData(
-    JNIEnv* env, jobject obj, jbyteArray state, jbyteArray data,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographVerifyData(
+    JNIEnv* env, jclass class, jbyteArray state, jbyteArray data,
     jbyteArray public_key, jbyteArray signature) {
   jbyte* state_elements = (*env)->GetByteArrayElements(env, state, NULL);
   jbyte* data_elements = (*env)->GetByteArrayElements(env, data, NULL);
@@ -206,8 +271,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographVerifyData(
   return verified ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographVerifyIdentity(
-    JNIEnv* env, jobject obj, jbyteArray state, jbyteArray public_key,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographVerifyIdentity(
+    JNIEnv* env, jclass class, jbyteArray state, jbyteArray public_key,
     jbyteArray signature) {
   jbyte* state_elements = (*env)->GetByteArrayElements(env, state, NULL);
   jbyte* public_key_elements =
@@ -223,8 +289,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographVerifyIdentity(
   return verified ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographCloseSession(
-    JNIEnv* env, jobject obj, jbyteArray key, jbyteArray ciphertext,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographCloseSession(
+    JNIEnv* env, jclass class, jbyteArray key, jbyteArray ciphertext,
     jbyteArray state) {
   jbyte* key_elements = (*env)->GetByteArrayElements(env, key, NULL);
   jbyte* ciphertext_elements =
@@ -239,8 +306,9 @@ JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographCloseSession(
   return success ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sh_autograph_Channel_autographOpenSession(
-    JNIEnv* env, jobject obj, jbyteArray state, jbyteArray key,
+JNIEXPORT jboolean JNICALL
+Java_sh_autograph_Channel_00024Companion_autographOpenSession(
+    JNIEnv* env, jclass class, jbyteArray state, jbyteArray key,
     jbyteArray ciphertext) {
   jbyte* state_elements = (*env)->GetByteArrayElements(env, state, NULL);
   jbyte* key_elements = (*env)->GetByteArrayElements(env, key, NULL);

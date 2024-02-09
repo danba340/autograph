@@ -16,7 +16,7 @@
 #define SECRET_KEY_SIZE 32
 #define SHARED_SECRET_SIZE 32
 #define SIGNATURE_SIZE 64
-#define SIZE_SIZE 4
+#define SIZE_SIZE 8
 #define STATE_SIZE 2048
 #define TAG_SIZE 16
 

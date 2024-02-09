@@ -1,9 +1,0 @@
-export const HELLO_SIZE = 64
-export const INDEX_SIZE = 4
-export const KEY_PAIR_SIZE = 64
-export const PUBLIC_KEY_SIZE = 32
-export const SAFETY_NUMBER_SIZE = 64
-export const SECRET_KEY_SIZE = 32
-export const SIGNATURE_SIZE = 64
-export const SIZE_SIZE = 8
-export const STATE_SIZE = 2048

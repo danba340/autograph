@@ -6,41 +6,39 @@ import {
   autograph_close_session,
   autograph_decrypt_message,
   autograph_encrypt_message,
+  autograph_hello_size,
+  autograph_index_size,
   autograph_key_exchange,
   autograph_open_session,
   autograph_plaintext_size,
   autograph_read_index,
   autograph_read_size,
+  autograph_safety_number_size,
+  autograph_secret_key_size,
   autograph_session_size,
+  autograph_signature_size,
+  autograph_size_size,
+  autograph_state_size,
   autograph_use_key_pairs,
   autograph_use_public_keys,
   autograph_verify_data,
   autograph_verify_identity,
   autograph_verify_key_exchange
 } from './clib'
-import {
-  HELLO_SIZE,
-  INDEX_SIZE,
-  SAFETY_NUMBER_SIZE,
-  SECRET_KEY_SIZE,
-  SIGNATURE_SIZE,
-  SIZE_SIZE,
-  STATE_SIZE
-} from './contants'
 
-const createHello = () => new Uint8Array(HELLO_SIZE)
+const createHello = () => new Uint8Array(autograph_hello_size())
 
-const createIndex = () => new Uint8Array(INDEX_SIZE)
+const createIndex = () => new Uint8Array(autograph_index_size())
 
-const createSafetyNumber = () => new Uint8Array(SAFETY_NUMBER_SIZE)
+const createSafetyNumber = () => new Uint8Array(autograph_safety_number_size())
 
-const createSecretKey = () => new Uint8Array(SECRET_KEY_SIZE)
+const createSecretKey = () => new Uint8Array(autograph_secret_key_size())
 
-const createSignature = () => new Uint8Array(SIGNATURE_SIZE)
+const createSignature = () => new Uint8Array(autograph_signature_size())
 
-const createSize = () => new Uint8Array(SIZE_SIZE)
+const createSize = () => new Uint8Array(autograph_size_size())
 
-const createState = () => new Uint8Array(STATE_SIZE)
+const createState = () => new Uint8Array(autograph_state_size())
 
 const createCiphertext = (plaintext: Uint8Array) => {
   const size = autograph_ciphertext_size(plaintext.byteLength)

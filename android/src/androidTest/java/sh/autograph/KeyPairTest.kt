@@ -9,14 +9,14 @@ import org.junit.runner.RunWith
 class KeyPairTest {
     @Test
     fun testGenerateKeyPair() {
-        val keyPair = KeyPair().generateKeyPair()
+        val keyPair = KeyPair.generateKeyPair()
         assertEquals(keyPair.size, 64)
         assertFalse(keyPair.all { it == 0.toByte() })
     }
 
     @Test
     fun testGenerateIdentityKeyPair() {
-        val keyPair = KeyPair().generateIdentityKeyPair()
+        val keyPair = KeyPair.generateIdentityKeyPair()
         assertEquals(keyPair.size, 64)
         assertFalse(keyPair.all { it == 0.toByte() })
     }

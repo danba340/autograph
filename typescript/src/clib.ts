@@ -225,6 +225,30 @@ export const autograph_open_session = (
     ciphertext_size
   ) as boolean
 
+export const autograph_hello_size = () =>
+  call('autograph_hello_size', 'number') as number
+
+export const autograph_key_pair_size = () =>
+  call('autograph_key_pair_size', 'number') as number
+
+export const autograph_safety_number_size = () =>
+  call('autograph_safety_number_size', 'number') as number
+
+export const autograph_secret_key_size = () =>
+  call('autograph_secret_key_size', 'number') as number
+
+export const autograph_signature_size = () =>
+  call('autograph_signature_size', 'number') as number
+
+export const autograph_state_size = () =>
+  call('autograph_state_size', 'number') as number
+
+export const autograph_index_size = () =>
+  call('autograph_index_size', 'number') as number
+
+export const autograph_size_size = () =>
+  call('autograph_size_size', 'number') as number
+
 export const autograph_session_size = (state: Uint8Array) =>
   call('autograph_session_size', 'number', state) as number
 

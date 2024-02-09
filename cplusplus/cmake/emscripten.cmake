@@ -18,6 +18,14 @@ set(AUTOGRAPH_EXPORTED_FUNCTIONS
     autograph_verify_identity
     autograph_close_session
     autograph_open_session
+    autograph_hello_size
+    autograph_key_pair_size
+    autograph_safety_number_size
+    autograph_secret_key_size
+    autograph_signature_size
+    autograph_state_size
+    autograph_index_size
+    autograph_size_size
     autograph_session_size
     autograph_ciphertext_size
     autograph_plaintext_size

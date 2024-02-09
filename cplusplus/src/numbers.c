@@ -43,5 +43,11 @@ uint32_t autograph_read_index(const uint8_t *bytes) {
 }
 
 size_t autograph_read_size(const uint8_t *bytes) {
-  return get_uint64(bytes, 0);
+  uint64_t size = get_uint64(bytes, 0);
+#if SIZE_MAX < UINT64_MAX
+  if (size > SIZE_MAX) {
+    size = SIZE_MAX;
+  }
+#endif
+  return (size_t)size;
 }

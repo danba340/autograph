@@ -1,10 +1,10 @@
 import {
   autograph_ephemeral_key_pair,
-  autograph_identity_key_pair
+  autograph_identity_key_pair,
+  autograph_key_pair_size
 } from './clib'
-import { KEY_PAIR_SIZE } from './contants'
 
-const createKeyPair = () => new Uint8Array(KEY_PAIR_SIZE)
+const createKeyPair = () => new Uint8Array(autograph_key_pair_size())
 
 export const generateIdentityKeyPair = (): [boolean, Uint8Array] => {
   const keyPair = createKeyPair()
