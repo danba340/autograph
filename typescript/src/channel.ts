@@ -38,7 +38,7 @@ const createSignature = () => new Uint8Array(autograph_signature_size())
 
 const createSize = () => new Uint8Array(autograph_size_size())
 
-const createState = () => new Uint8Array(autograph_state_size())
+export const createState = () => new Uint8Array(autograph_state_size())
 
 const createCiphertext = (plaintext: Uint8Array) => {
   const size = autograph_ciphertext_size(plaintext.byteLength)
@@ -65,8 +65,8 @@ const resizePlaintext = (plaintext: Uint8Array, size: Uint8Array) =>
 export default class Channel {
   private state: Uint8Array
 
-  constructor() {
-    this.state = createState()
+  constructor(state: Uint8Array) {
+    this.state = state
   }
 
   useKeyPairs(

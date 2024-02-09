@@ -151,6 +151,8 @@ final class ChannelTests: XCTestCase {
         114, 143, 77, 115, 135, 143, 103,
     ]
 
+    var aliceState: Autograph.State!
+    var bobState: Autograph.State!
     var a: Autograph.Channel!
     var b: Autograph.Channel!
     var aliceEphemeralKeyPair: Autograph.Bytes!
@@ -183,8 +185,11 @@ final class ChannelTests: XCTestCase {
             232, 80, 6, 232, 93,
         ]
 
-        a = Autograph.Channel()
-        b = Autograph.Channel()
+        aliceState = Autograph.State()
+        bobState = Autograph.State()
+
+        a = Autograph.Channel(state: aliceState)
+        b = Autograph.Channel(state: bobState)
 
         let aliceHello = try a.useKeyPairs(
             identityKeyPair: aliceIdentityKeyPair,

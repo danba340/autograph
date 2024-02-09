@@ -1,4 +1,4 @@
-import { Channel, ready } from '../src/autograph'
+import { Channel, createState, ready } from '../src/autograph'
 
 describe('Channel', () => {
   const aliceHandshake = Uint8Array.from([
@@ -113,6 +113,8 @@ describe('Channel', () => {
     103
   ])
 
+  let aliceState: Uint8Array
+  let bobState: Uint8Array
   let a: Channel
   let b: Channel
   let aliceVerified: boolean
@@ -140,8 +142,11 @@ describe('Channel', () => {
       93
     ])
 
-    a = new Channel()
-    b = new Channel()
+    aliceState = createState()
+    bobState = createState()
+
+    a = new Channel(aliceState)
+    b = new Channel(bobState)
 
     const [, aliceHello] = a.useKeyPairs(
       aliceIdentityKeyPair,

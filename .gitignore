@@ -6,7 +6,7 @@
 *.tgz
 .cache/
 
-# Android-specified files
+# Android-specific files
 .idea/
 .gradle/
 android/.cxx/
