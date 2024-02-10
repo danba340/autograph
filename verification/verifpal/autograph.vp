@@ -1,7 +1,7 @@
 attacker[active]
 
 principal Alice[
-  knows public salt, alice_nonce, bob_nonce
+  knows public salt, info
   knows private alice_data
   knows private alice_identity_private_key
   generates alice_ephemeral_private_key
@@ -10,7 +10,7 @@ principal Alice[
 ]
 
 principal Bob[
-  knows public salt, info, alice_nonce, bob_nonce
+  knows public salt, info
   knows private bob_data
   knows private bob_identity_private_key
   generates bob_ephemeral_private_key
@@ -18,27 +18,27 @@ principal Bob[
   bob_ephemeral_public_key = G^bob_ephemeral_private_key
 ]
 
-Alice -> Bob: [alice_identity_public_key], [alice_ephemeral_public_key]
+Alice -> Bob: [alice_identity_public_key], alice_ephemeral_public_key
 
 principal Bob[
-  bob_handshake = SIGN(bob_identity_private_key, alice_ephemeral_public_key)
   bob_shared_secret = alice_ephemeral_public_key^bob_ephemeral_private_key
   bob_receiving_key, bob_sending_key = HKDF(salt, bob_shared_secret, info)
+  bob_signature = SIGN(bob_identity_private_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, alice_identity_public_key))
 ]
 
-Bob -> Alice: [bob_identity_public_key], [bob_ephemeral_public_key], bob_handshake
+Bob -> Alice: [bob_identity_public_key], bob_ephemeral_public_key, bob_signature
 
 principal Alice[
-  _ = SIGNVERIF(bob_identity_public_key, alice_ephemeral_public_key, bob_handshake)
   alice_shared_secret = bob_ephemeral_public_key^alice_ephemeral_private_key
   alice_sending_key, alice_receiving_key = HKDF(salt, alice_shared_secret, info)
-  alice_handshake = SIGN(alice_identity_private_key, bob_ephemeral_public_key)
+  _ = SIGNVERIF(bob_identity_public_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, alice_identity_public_key), bob_signature)?
+  alice_signature = SIGN(alice_identity_private_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, bob_identity_public_key))
 ]
 
-Alice -> Bob: alice_handshake
+Alice -> Bob: alice_signature
 
 principal Bob[
-  _ = SIGNVERIF(alice_identity_public_key, bob_ephemeral_public_key, alice_handshake)?
+  _ = SIGNVERIF(alice_identity_public_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, bob_identity_public_key), alice_signature)?
   bob_message = AEAD_ENC(bob_sending_key, bob_data, nil)
 ]
 
