@@ -37,7 +37,7 @@ name = "key_pair_test"
 path = "rust/tests/key_pair.rs"
 
 [dependencies]
-chacha20poly1305 = "0.10.1"
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["rand_core", "alloc"] }
 ed25519-dalek = { version = "2.1.0", default-features = false, features = ["rand_core", "zeroize"] }
 hkdf = "0.12.4"
 rand_core = "0.6.4"
