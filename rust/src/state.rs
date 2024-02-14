@@ -165,7 +165,7 @@ pub fn zeroize_skipped_indexes(state: &mut State) {
     zeroize(&mut state[SKIPPED_INDEXES_MIN_OFFSET..STATE_SIZE]);
 }
 
-pub fn calculate_session_size(state: &State) -> usize {
+pub fn calculate_state_size(state: &State) -> usize {
     if get_uint32(state, SKIPPED_INDEXES_MAX_OFFSET) > 0 {
         return STATE_SIZE;
     }
@@ -180,7 +180,7 @@ pub fn calculate_session_size(state: &State) -> usize {
 }
 
 pub fn skip_index(state: &mut State) -> bool {
-    let offset = calculate_session_size(state);
+    let offset = calculate_state_size(state);
     if offset > SKIPPED_INDEXES_MAX_OFFSET {
         return false;
     }
@@ -213,7 +213,7 @@ pub fn get_skipped_index(
 }
 
 pub fn delete_skipped_index(state: &mut State, next_offset: usize) {
-    let session_size = calculate_session_size(state);
+    let session_size = calculate_state_size(state);
     let offset = next_offset - INDEX_SIZE;
     let last_offset = session_size - INDEX_SIZE;
     if offset != last_offset {
@@ -222,6 +222,6 @@ pub fn delete_skipped_index(state: &mut State, next_offset: usize) {
     zeroize(&mut state[last_offset..]);
 }
 
-pub fn get_session(state: &State) -> &[u8] {
-    &state[..calculate_session_size(state)]
+pub fn get_state(state: &State) -> &[u8] {
+    &state[..calculate_state_size(state)]
 }

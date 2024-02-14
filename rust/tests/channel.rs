@@ -1,5 +1,5 @@
 use autograph_protocol::{
-    Bytes, Channel, KeyPair, PublicKey, SafetyNumber, Signature, State, SECRET_KEY_SIZE, STATE_SIZE,
+    Bytes, Channel, KeyPair, PublicKey, SafetyNumber, Signature, SECRET_KEY_SIZE,
 };
 
 #[test]
@@ -125,10 +125,8 @@ fn test_channel() {
         232, 80, 6, 232, 93,
     ];
 
-    let mut alice_state: State = [0; STATE_SIZE];
-    let mut bob_state: State = [0; STATE_SIZE];
-    let mut a = Channel::new(&mut alice_state);
-    let mut b = Channel::new(&mut bob_state);
+    let mut a = Channel::new();
+    let mut b = Channel::new();
     test_key_exchange(
         &mut a,
         &mut b,
@@ -156,6 +154,7 @@ fn test_channel() {
     test_bob_verify_alice_identity(&b, &charlie_identity_key, charlie_signature_alice_identity);
     test_alice_verify_bob_identity(&a, &charlie_identity_key, charlie_signature_bob_identity);
     test_out_of_order_messages(&mut a, &mut b);
+    test_channel_open_close(&mut a, &mut b, alice_signature_bob_identity);
 }
 
 // Should allow Alice and Bob to perform a key exchange
@@ -308,51 +307,15 @@ fn test_out_of_order_messages(a: &mut Channel, b: &mut Channel) {
     assert_eq!(plaintext4, data4);
 }
 
-// Should handle sessions correctly
-#[test]
-fn test_session() {
-    let alice_signature_bob_identity: Signature = [
-        170, 64, 159, 119, 20, 17, 130, 46, 124, 70, 154, 47, 90, 7, 116, 204, 255, 198, 56, 60,
-        24, 112, 214, 188, 212, 64, 210, 117, 228, 145, 111, 250, 84, 20, 216, 222, 21, 82, 213,
-        225, 31, 28, 152, 211, 16, 82, 131, 7, 248, 186, 255, 184, 35, 205, 183, 167, 138, 179,
-        217, 135, 163, 124, 13, 5,
-    ];
-
-    let mut alice_state_init = vec![
-        118, 164, 17, 240, 147, 79, 190, 38, 66, 93, 254, 238, 125, 202, 197, 2, 56, 252, 122, 177,
-        18, 187, 249, 208, 29, 149, 122, 103, 57, 199, 19, 17, 213, 153, 88, 124, 93, 136, 104,
-        111, 196, 208, 155, 156, 165, 31, 120, 186, 79, 205, 247, 175, 243, 184, 114, 80, 152, 243,
-        24, 225, 91, 220, 141, 150, 177, 67, 45, 125, 158, 190, 181, 222, 101, 149, 224, 200, 223,
-        235, 222, 110, 67, 61, 200, 62, 29, 37, 150, 228, 137, 114, 143, 77, 115, 135, 143, 103, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 217, 155, 76, 165, 59, 188, 67, 41, 220, 168, 9, 28, 236,
-        172, 159, 253, 132, 240, 104, 28, 183, 164, 95, 57, 132, 227, 32, 234, 84, 97, 192, 180, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 228, 80, 92, 70, 9, 154, 102, 79, 79, 238, 183, 1, 104,
-        239, 123, 93, 228, 74, 44, 60, 147, 21, 105, 30, 217, 135, 107, 104, 104, 117, 50, 116,
-    ];
-
-    let mut bob_state_init = vec![
-        52, 0, 150, 226, 138, 192, 249, 231, 126, 199, 95, 240, 106, 17, 150, 95, 221, 247, 33,
-        201, 19, 62, 4, 135, 169, 104, 128, 218, 250, 251, 243, 190, 177, 67, 45, 125, 158, 190,
-        181, 222, 101, 149, 224, 200, 223, 235, 222, 110, 67, 61, 200, 62, 29, 37, 150, 228, 137,
-        114, 143, 77, 115, 135, 143, 103, 213, 153, 88, 124, 93, 136, 104, 111, 196, 208, 155, 156,
-        165, 31, 120, 186, 79, 205, 247, 175, 243, 184, 114, 80, 152, 243, 24, 225, 91, 220, 141,
-        150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 228, 80, 92, 70, 9, 154, 102, 79, 79, 238, 183, 1,
-        104, 239, 123, 93, 228, 74, 44, 60, 147, 21, 105, 30, 217, 135, 107, 104, 104, 117, 50,
-        116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 217, 155, 76, 165, 59, 188, 67, 41, 220, 168, 9,
-        28, 236, 172, 159, 253, 132, 240, 104, 28, 183, 164, 95, 57, 132, 227, 32, 234, 84, 97,
-        192, 180,
-    ];
-
-    alice_state_init.resize(STATE_SIZE, 0);
-    bob_state_init.resize(STATE_SIZE, 0);
-    let mut alice_state: State = alice_state_init.try_into().unwrap();
-    let mut bob_state: State = bob_state_init.try_into().unwrap();
-    let mut a = Channel::new(&mut alice_state);
-    let mut b = Channel::new(&mut bob_state);
+// Should correctly open and close channels
+fn test_channel_open_close(
+    a: &mut Channel,
+    b: &mut Channel,
+    alice_signature_bob_identity: Signature,
+) {
     let (mut key, ciphertext) = a.close().unwrap();
-    assert_eq!(alice_state, [0; STATE_SIZE]);
     b.open(&mut key, &ciphertext).unwrap();
+    assert_eq!(key, [0; SECRET_KEY_SIZE]);
     let signature = b.certify_identity().unwrap();
     assert_eq!(signature, alice_signature_bob_identity);
-    assert_eq!(key, [0; SECRET_KEY_SIZE])
 }

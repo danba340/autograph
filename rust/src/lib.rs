@@ -22,10 +22,9 @@ mod numbers;
 mod state;
 mod types;
 
-pub use channel::{create_state, Channel};
+pub use channel::Channel;
 pub use constants::{
-    HELLO_SIZE, KEY_PAIR_SIZE, PUBLIC_KEY_SIZE, SAFETY_NUMBER_SIZE, SECRET_KEY_SIZE,
-    SIGNATURE_SIZE, STATE_SIZE,
+    HELLO_SIZE, KEY_PAIR_SIZE, PUBLIC_KEY_SIZE, SAFETY_NUMBER_SIZE, SECRET_KEY_SIZE, SIGNATURE_SIZE,
 };
 pub use key_pair::{generate_identity_key_pair, generate_key_pair};
-pub use types::{Bytes, Hello, KeyPair, PublicKey, SafetyNumber, SecretKey, Signature, State};
+pub use types::{Bytes, Hello, KeyPair, PublicKey, SafetyNumber, SecretKey, Signature};

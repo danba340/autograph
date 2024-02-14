@@ -17,9 +17,9 @@ use crate::{
     key_exchange::{key_exchange, verify_key_exchange},
     numbers::{read_index, read_size, set_size},
     state::{
-        calculate_session_size, delete_skipped_index, get_receiving_index, get_receiving_key,
-        get_receiving_nonce, get_sending_index, get_sending_key, get_sending_nonce, get_session,
-        get_skipped_index, get_their_identity_key, increment_receiving_index,
+        calculate_state_size, delete_skipped_index, get_receiving_index, get_receiving_key,
+        get_receiving_nonce, get_sending_index, get_sending_key, get_sending_nonce,
+        get_skipped_index, get_state, get_their_identity_key, increment_receiving_index,
         increment_sending_index, set_ephemeral_key_pair, set_identity_key_pair,
         set_their_ephemeral_key, set_their_identity_key, skip_index,
     },
@@ -173,7 +173,7 @@ fn decrypt_skipped(
     let key = get_receiving_key(state);
     let mut nonce: Nonce = [0; NONCE_SIZE];
     let mut offset = get_skipped_index(index, &mut nonce, state, 0);
-    let session_size = calculate_session_size(state);
+    let session_size = calculate_state_size(state);
     while offset <= session_size {
         if decrypt_ciphertext(plaintext, plaintext_size, key, &nonce, ciphertext) {
             delete_skipped_index(state, offset);
@@ -247,12 +247,12 @@ fn derive_session_key(key: &mut SecretKey, state: &mut State) -> bool {
     success
 }
 
-pub fn close_session(key: &mut SecretKey, ciphertext: &mut [u8], state: &mut State) -> bool {
+pub fn close_channel(key: &mut SecretKey, ciphertext: &mut [u8], state: &mut State) -> bool {
     if !derive_session_key(key, state) {
         zeroize(state);
         return false;
     }
-    let mut plaintext = get_session(state).to_vec();
+    let mut plaintext = get_state(state).to_vec();
     let nonce: Nonce = [0; NONCE_SIZE];
     let success = encrypt_plaintext(ciphertext, key, &nonce, &plaintext);
     zeroize(state);
@@ -260,7 +260,7 @@ pub fn close_session(key: &mut SecretKey, ciphertext: &mut [u8], state: &mut Sta
     success
 }
 
-pub fn open_session(state: &mut State, key: &mut SecretKey, ciphertext: &[u8]) -> bool {
+pub fn open_channel(state: &mut State, key: &mut SecretKey, ciphertext: &[u8]) -> bool {
     let mut plaintext = create_plaintext(ciphertext);
     let mut plaintext_size: Size = [0; SIZE_SIZE];
     let nonce: Nonce = [0; NONCE_SIZE];
@@ -278,17 +278,15 @@ fn resize_plaintext(mut plaintext: Bytes, plaintext_size: Size) -> Bytes {
     plaintext
 }
 
-pub fn create_state() -> State {
-    [0; STATE_SIZE]
+pub struct Channel {
+    state: State,
 }
 
-pub struct Channel<'a> {
-    state: &'a mut State,
-}
-
-impl<'a> Channel<'a> {
-    pub fn new(state: &'a mut State) -> Self {
-        Self { state }
+impl Channel {
+    pub fn new() -> Self {
+        Self {
+            state: [0; STATE_SIZE],
+        }
     }
 
     pub fn use_key_pairs(
@@ -299,7 +297,7 @@ impl<'a> Channel<'a> {
         let mut public_keys: Hello = [0; HELLO_SIZE];
         let success = use_key_pairs(
             &mut public_keys,
-            self.state,
+            &mut self.state,
             identity_key_pair,
             ephemeral_key_pair,
         );
@@ -311,12 +309,12 @@ impl<'a> Channel<'a> {
     }
 
     pub fn use_public_keys(&mut self, public_keys: Hello) {
-        use_public_keys(self.state, public_keys)
+        use_public_keys(&mut self.state, public_keys)
     }
 
     pub fn authenticate(&self) -> Result<SafetyNumber, Error> {
         let mut safety_number: SafetyNumber = [0; SAFETY_NUMBER_SIZE];
-        let success = authenticate(&mut safety_number, self.state);
+        let success = authenticate(&mut safety_number, &self.state);
         if !success {
             Err(Error::Authentication)
         } else {
@@ -326,7 +324,7 @@ impl<'a> Channel<'a> {
 
     pub fn key_exchange(&mut self, is_initiator: bool) -> Result<Signature, Error> {
         let mut signature: Signature = [0; SIGNATURE_SIZE];
-        let success = key_exchange(&mut signature, self.state, is_initiator);
+        let success = key_exchange(&mut signature, &mut self.state, is_initiator);
         if !success {
             Err(Error::KeyExchange)
         } else {
@@ -335,7 +333,7 @@ impl<'a> Channel<'a> {
     }
 
     pub fn verify_key_exchange(&mut self, signature: Signature) -> Result<(), Error> {
-        let verified = verify_key_exchange(self.state, signature);
+        let verified = verify_key_exchange(&mut self.state, signature);
         if !verified {
             Err(Error::KeyExchange)
         } else {
@@ -346,7 +344,7 @@ impl<'a> Channel<'a> {
     pub fn encrypt(&mut self, plaintext: &[u8]) -> Result<(u32, Bytes), Error> {
         let mut ciphertext = create_ciphertext(plaintext);
         let mut index: Index = [0; INDEX_SIZE];
-        let success = encrypt_message(&mut ciphertext, &mut index, self.state, plaintext);
+        let success = encrypt_message(&mut ciphertext, &mut index, &mut self.state, plaintext);
         if !success {
             Err(Error::Encryption)
         } else {
@@ -362,7 +360,7 @@ impl<'a> Channel<'a> {
             &mut plaintext,
             &mut size,
             &mut index,
-            self.state,
+            &mut self.state,
             ciphertext,
         );
         if !success {
@@ -374,7 +372,7 @@ impl<'a> Channel<'a> {
 
     pub fn certify_data(&self, data: &[u8]) -> Result<Signature, Error> {
         let mut signature: Signature = [0; SIGNATURE_SIZE];
-        let success = certify_data(&mut signature, self.state, data);
+        let success = certify_data(&mut signature, &self.state, data);
         if !success {
             Err(Error::Certification)
         } else {
@@ -384,7 +382,7 @@ impl<'a> Channel<'a> {
 
     pub fn certify_identity(&self) -> Result<Signature, Error> {
         let mut signature: Signature = [0; SIGNATURE_SIZE];
-        let success = certify_identity(&mut signature, self.state);
+        let success = certify_identity(&mut signature, &self.state);
         if !success {
             Err(Error::Certification)
         } else {
@@ -393,17 +391,17 @@ impl<'a> Channel<'a> {
     }
 
     pub fn verify_data(&self, data: &[u8], public_key: &PublicKey, signature: &Signature) -> bool {
-        verify_data(self.state, data, public_key, signature)
+        verify_data(&self.state, data, public_key, signature)
     }
 
     pub fn verify_identity(&self, public_key: &PublicKey, signature: &Signature) -> bool {
-        verify_identity(self.state, public_key, signature)
+        verify_identity(&self.state, public_key, signature)
     }
 
     pub fn close(&mut self) -> Result<(SecretKey, Bytes), Error> {
         let mut key: SecretKey = [0; SECRET_KEY_SIZE];
-        let mut ciphertext = create_ciphertext(get_session(self.state));
-        let success = close_session(&mut key, &mut ciphertext, self.state);
+        let mut ciphertext = create_ciphertext(get_state(&self.state));
+        let success = close_channel(&mut key, &mut ciphertext, &mut self.state);
         if !success {
             Err(Error::Session)
         } else {
@@ -412,7 +410,7 @@ impl<'a> Channel<'a> {
     }
 
     pub fn open(&mut self, key: &mut SecretKey, ciphertext: &[u8]) -> Result<(), Error> {
-        let success = open_session(self.state, key, ciphertext);
+        let success = open_channel(&mut self.state, key, ciphertext);
         if !success {
             Err(Error::Session)
         } else {
