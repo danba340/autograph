@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-bool init();
+bool ready();
 
 bool encrypt(uint8_t *ciphertext, const uint8_t *key, const uint8_t *nonce,
              const uint8_t *plaintext, const size_t plaintext_size);
@@ -24,7 +24,7 @@ bool key_pair_ephemeral(uint8_t *key_pair);
 
 bool key_pair_identity(uint8_t *key_pair);
 
-bool sign(uint8_t *signature, uint8_t *key_pair, const uint8_t *message,
+bool sign(uint8_t *signature, const uint8_t *key_pair, const uint8_t *message,
           const size_t message_size);
 
 bool verify(const uint8_t *public_key, const uint8_t *signature,

@@ -1,7 +1,6 @@
-#include "cert.h"
-
 #include <string.h>
 
+#include "autograph.h"
 #include "constants.h"
 #include "external.h"
 #include "state.h"
@@ -19,12 +18,12 @@ void calculate_subject(uint8_t *subject, const size_t subject_size,
   memmove(subject + key_offset, public_key, PUBLIC_KEY_SIZE);
 }
 
-bool sign_subject(uint8_t *signature, uint8_t *state, const uint8_t *subject,
-                  const size_t subject_size) {
+bool sign_subject(uint8_t *signature, const uint8_t *state,
+                  const uint8_t *subject, const size_t subject_size) {
   return sign(signature, get_identity_key_pair(state), subject, subject_size);
 }
 
-bool certify_data_ownership(uint8_t *signature, uint8_t *state,
+bool certify_data_ownership(uint8_t *signature, const uint8_t *state,
                             const uint8_t *owner_public_key,
                             const uint8_t *data, const size_t data_size) {
   size_t subject_size = calculate_subject_size(data_size);
@@ -33,7 +32,7 @@ bool certify_data_ownership(uint8_t *signature, uint8_t *state,
   return sign_subject(signature, state, subject, subject_size);
 }
 
-bool certify_identity_ownership(uint8_t *signature, uint8_t *state,
+bool certify_identity_ownership(uint8_t *signature, const uint8_t *state,
                                 const uint8_t *owner_public_key) {
   return sign_subject(signature, state, owner_public_key, PUBLIC_KEY_SIZE);
 }
@@ -53,4 +52,28 @@ bool verify_identity_ownership(const uint8_t *owner_public_key,
                                const uint8_t *signature) {
   return verify(certifier_public_key, signature, owner_public_key,
                 PUBLIC_KEY_SIZE);
+}
+
+bool autograph_certify_data(uint8_t *signature, const uint8_t *state,
+                            const uint8_t *data, const size_t data_size) {
+  return certify_data_ownership(signature, state, get_their_identity_key(state),
+                                data, data_size);
+}
+
+bool autograph_certify_identity(uint8_t *signature, const uint8_t *state) {
+  return certify_identity_ownership(signature, state,
+                                    get_their_identity_key(state));
+}
+
+bool autograph_verify_data(const uint8_t *state, const uint8_t *data,
+                           const size_t data_size, const uint8_t *public_key,
+                           const uint8_t *signature) {
+  return verify_data_ownership(get_their_identity_key(state), data, data_size,
+                               public_key, signature);
+}
+
+bool autograph_verify_identity(const uint8_t *state, const uint8_t *public_key,
+                               const uint8_t *signature) {
+  return verify_identity_ownership(get_their_identity_key(state), public_key,
+                                   signature);
 }

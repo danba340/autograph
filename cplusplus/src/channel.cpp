@@ -31,9 +31,7 @@ Bytes resizePlaintext(Bytes plaintext, const Size plaintextSize) {
   return plaintext;
 }
 
-Channel::Channel(State &state) : state(state) {}
-
-tuple<bool, Hello> Channel::useKeyPairs(KeyPair &identityKeyPair,
+tuple<bool, Hello> Channel::useKeyPairs(const KeyPair &identityKeyPair,
                                         KeyPair &ephemeralKeyPair) {
   Hello publicKeys;
   bool success =

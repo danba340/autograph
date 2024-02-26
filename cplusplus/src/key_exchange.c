@@ -41,6 +41,5 @@ bool autograph_verify_key_exchange(uint8_t *state,
     zeroize(state, STATE_SIZE);
     return false;
   }
-  zeroize_skipped_indexes(state);
   return true;
 }

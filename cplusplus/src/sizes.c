@@ -14,7 +14,3 @@ size_t autograph_secret_key_size() { return SECRET_KEY_SIZE; }
 size_t autograph_signature_size() { return SIGNATURE_SIZE; }
 
 size_t autograph_state_size() { return STATE_SIZE; }
-
-size_t autograph_index_size() { return INDEX_SIZE; }
-
-size_t autograph_size_size() { return SIZE_SIZE; }

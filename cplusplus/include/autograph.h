@@ -9,6 +9,52 @@
 extern "C" {
 #endif
 
+extern bool autograph_send(const uint8_t *message, const size_t message_size);
+
+extern bool autograph_receive(uint8_t *message, size_t *message_size);
+
+extern bool autograph_prove(uint8_t *data, size_t *data_size,
+                            uint8_t *certificates, const size_t max_data_size,
+                            const uint64_t data_type, const uint8_t *public_key,
+                            const uint8_t *trusted_parties,
+                            const size_t trusted_parties_size,
+                            const size_t trust_threshold);
+
+extern bool autograph_proof(const uint8_t *public_key, const uint8_t *signature,
+                            const uint64_t data_type, const uint8_t *data,
+                            const size_t data_size);
+
+extern bool autograph_secret_keys(const uint8_t *public_key,
+                                  const uint8_t *sending_key,
+                                  const uint8_t *receiving_key);
+
+extern bool autograph_authenticate(const uint8_t *public_key,
+                                   const uint8_t *safety_number);
+
+bool autograph_init(uint8_t *state, const uint8_t *identity_key_pair,
+                    uint8_t *ephemeral_key_pair);
+
+bool autograph_hello(uint8_t *state, size_t max_data_size);
+
+bool autograph_certify(uint8_t *public_key, uint8_t *data, size_t *data_size,
+                       uint8_t *state, size_t max_data_size,
+                       const uint64_t data_type, const uint8_t *trusted_parties,
+                       const size_t trusted_parties_size,
+                       const size_t trust_threshold, const bool authenticate);
+
+bool autograph_verify(uint8_t *public_key, uint8_t *data, size_t *data_size,
+                      uint8_t *state, const uint64_t data_type,
+                      const uint8_t *trusted_parties,
+                      const size_t trusted_parties_size,
+                      const size_t trust_threshold, const bool authenticate);
+
+bool autograph_establish_keys(uint8_t *public_key, uint8_t *sending_key,
+                              uint8_t *receiving_key, uint8_t *state,
+                              const uint8_t *trusted_parties,
+                              const size_t trusted_parties_size,
+                              const size_t trust_threshold,
+                              const bool authenticate);
+
 bool autograph_identity_key_pair(uint8_t *key_pair);
 
 bool autograph_ephemeral_key_pair(uint8_t *key_pair);
@@ -19,40 +65,33 @@ bool autograph_use_key_pairs(uint8_t *public_keys, uint8_t *state,
 
 void autograph_use_public_keys(uint8_t *state, const uint8_t *public_keys);
 
-bool autograph_authenticate(uint8_t *safety_number, uint8_t *state);
+bool authograph_safety_number(uint8_t *safety_number, const uint8_t *state);
 
 bool autograph_key_exchange(uint8_t *our_signature, uint8_t *state,
-                            bool is_initiator);
+                            const bool is_initiator);
 
 bool autograph_verify_key_exchange(uint8_t *state,
                                    const uint8_t *their_signature);
 
-bool autograph_encrypt_message(uint8_t *ciphertext, uint8_t *index,
-                               uint8_t *state, const uint8_t *plaintext,
+bool autograph_encrypt_message(uint8_t *ciphertext, uint8_t *state,
+                               const uint8_t *plaintext,
                                const size_t plaintext_size);
 
-bool autograph_decrypt_message(uint8_t *plaintext, uint8_t *plaintext_size,
-                               uint8_t *index, uint8_t *state,
-                               const uint8_t *ciphertext,
+bool autograph_decrypt_message(uint8_t *plaintext, size_t *plaintext_size,
+                               uint8_t *state, const uint8_t *ciphertext,
                                const size_t ciphertext_size);
 
-bool autograph_certify_data(uint8_t *signature, uint8_t *state,
+bool autograph_certify_data(uint8_t *signature, const uint8_t *state,
                             const uint8_t *data, const size_t data_size);
 
-bool autograph_certify_identity(uint8_t *signature, uint8_t *state);
+bool autograph_certify_identity(uint8_t *signature, const uint8_t *state);
 
-bool autograph_verify_data(uint8_t *state, const uint8_t *data,
+bool autograph_verify_data(const uint8_t *state, const uint8_t *data,
                            const size_t data_size, const uint8_t *public_key,
                            const uint8_t *signature);
 
-bool autograph_verify_identity(uint8_t *state, const uint8_t *public_key,
+bool autograph_verify_identity(const uint8_t *state, const uint8_t *public_key,
                                const uint8_t *signature);
-
-bool autograph_close_session(uint8_t *key, uint8_t *ciphertext, uint8_t *state);
-
-bool autograph_open_session(uint8_t *state, uint8_t *key,
-                            const uint8_t *ciphertext,
-                            const size_t ciphertext_size);
 
 size_t autograph_hello_size();
 
@@ -68,19 +107,9 @@ size_t autograph_signature_size();
 
 size_t autograph_state_size();
 
-size_t autograph_index_size();
-
-size_t autograph_size_size();
-
-size_t autograph_session_size(const uint8_t *state);
-
 size_t autograph_ciphertext_size(const size_t plaintext_size);
 
 size_t autograph_plaintext_size(const size_t ciphertext_size);
-
-uint32_t autograph_read_index(const uint8_t *bytes);
-
-size_t autograph_read_size(const uint8_t *bytes);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -116,9 +145,7 @@ using std::tuple;
 
 class Channel {
  public:
-  Channel(State &state);
-
-  tuple<bool, Hello> useKeyPairs(KeyPair &identityKeyPair,
+  tuple<bool, Hello> useKeyPairs(const KeyPair &identityKeyPair,
                                  KeyPair &ephemeralKeyPair);
 
   void usePublicKeys(Hello &publicKeys);
@@ -148,7 +175,7 @@ class Channel {
   bool open(SecretKey &key, const Bytes &ciphertext);
 
  private:
-  State &state;
+  State state;
 };
 
 tuple<bool, KeyPair> generateIdentityKeyPair();

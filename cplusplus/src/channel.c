@@ -7,229 +7,181 @@
 #include "cert.h"
 #include "constants.h"
 #include "external.h"
-#include "kdf.h"
-#include "numbers.h"
 #include "state.h"
-
-bool autograph_use_key_pairs(uint8_t *public_keys, uint8_t *state,
-                             const uint8_t *identity_key_pair,
-                             const uint8_t *ephemeral_key_pair) {
-  zeroize(state, STATE_SIZE);
-  if (!init()) {
-    return false;
-  }
-  set_identity_key_pair(state, identity_key_pair);
-  set_ephemeral_key_pair(state, ephemeral_key_pair);
-  memmove(public_keys, identity_key_pair + PRIVATE_KEY_SIZE, PUBLIC_KEY_SIZE);
-  memmove(public_keys + PUBLIC_KEY_SIZE, ephemeral_key_pair + PRIVATE_KEY_SIZE,
-          PUBLIC_KEY_SIZE);
-  return true;
-}
 
 void autograph_use_public_keys(uint8_t *state, const uint8_t *public_keys) {
   set_their_identity_key(state, public_keys);
   set_their_ephemeral_key(state, public_keys + PUBLIC_KEY_SIZE);
 }
 
-size_t calculate_padded_size(const size_t plaintext_size) {
-  return plaintext_size + PADDING_BLOCK_SIZE -
-         (plaintext_size % PADDING_BLOCK_SIZE);
-}
-
-void pad(uint8_t *padded, const size_t padded_size, const uint8_t *plaintext,
-         const size_t plaintext_size) {
-  zeroize(padded, padded_size);
-  memmove(padded, plaintext, plaintext_size);
-  padded[plaintext_size] = PADDING_BYTE;
-}
-
-bool encrypt_plaintext(uint8_t *ciphertext, const uint8_t *key,
-                       const uint8_t *nonce, const uint8_t *plaintext,
-                       const size_t plaintext_size) {
-  size_t padded_size = calculate_padded_size(plaintext_size);
-  uint8_t padded[padded_size];
-  pad(padded, padded_size, plaintext, plaintext_size);
-  return encrypt(ciphertext, key, nonce, padded, padded_size);
-}
-
-bool autograph_encrypt_message(uint8_t *ciphertext, uint8_t *index,
-                               uint8_t *state, const uint8_t *plaintext,
-                               const size_t plaintext_size) {
-  if (!increment_sending_index(state)) {
-    zeroize(state, STATE_SIZE);
+bool autograph_init(uint8_t *state, const uint8_t *identity_key_pair,
+                    uint8_t *ephemeral_key_pair) {
+  zeroize(state, STATE_SIZE);
+  if (!ready()) {
     return false;
   }
-  if (!encrypt_plaintext(ciphertext, get_sending_key(state),
-                         get_sending_nonce(state), plaintext, plaintext_size)) {
-    zeroize(state, STATE_SIZE);
-    return false;
-  }
-  memmove(index, get_sending_index(state), INDEX_SIZE);
+  set_identity_key_pair(state, identity_key_pair);
+  set_ephemeral_key_pair(state, ephemeral_key_pair);
+  zeroize(ephemeral_key_pair, KEY_PAIR_SIZE);
   return true;
 }
 
-size_t calculate_unpadded_size(const uint8_t *padded,
-                               const size_t padded_size) {
-  if (padded_size == 0 || (padded_size % PADDING_BLOCK_SIZE) > 0) {
-    return 0;
-  }
-  for (uint8_t i = padded_size - 1; i >= (padded_size - PADDING_BLOCK_SIZE);
-       --i) {
-    uint8_t byte = padded[i];
-    if (byte == PADDING_BYTE) {
-      return i;
-    }
-    if (byte != 0) {
-      return 0;
-    }
-  }
-  return 0;
-}
-
-bool unpad(uint8_t *unpadded_size, const uint8_t *padded,
-           const size_t padded_size) {
-  size_t size = calculate_unpadded_size(padded, padded_size);
-  if (size == 0) {
+bool establish_channel_initiator(uint8_t *state, uint8_t *message,
+                                 size_t *message_size, uint8_t *our_signature) {
+  read_our_public_keys(message, state);
+  if (!autograph_send(message, HELLO_SIZE)) {
     return false;
   }
-  set_uint64(unpadded_size, 0, (uint64_t)size);
+  if (!autograph_receive(message, message_size)) {
+    return false;
+  }
+  autograph_use_public_keys(state, message);
+  if (!autograph_key_exchange(our_signature, state, true)) {
+    return false;
+  }
+  if (!autograph_send(our_signature, SIGNATURE_SIZE)) {
+    return false;
+  }
+  if (!autograph_verify_key_exchange(state, message + HELLO_SIZE)) {
+    return false;
+  }
   return true;
 }
 
-size_t autograph_ciphertext_size(const size_t plaintext_size) {
-  return calculate_padded_size(plaintext_size) + TAG_SIZE;
-}
-
-size_t autograph_plaintext_size(const size_t ciphertext_size) {
-  return ciphertext_size - TAG_SIZE;
-}
-
-bool decrypt_ciphertext(uint8_t *plaintext, uint8_t *plaintext_size,
-                        const uint8_t *key, const uint8_t *nonce,
-                        const uint8_t *ciphertext,
-                        const size_t ciphertext_size) {
-  if (decrypt(plaintext, key, nonce, ciphertext, ciphertext_size)) {
-    return unpad(plaintext_size, plaintext,
-                 autograph_plaintext_size(ciphertext_size));
+bool establish_channel_responder(uint8_t *state, uint8_t *message,
+                                 size_t *message_size, uint8_t *our_signature) {
+  if (!autograph_receive(message, message_size)) {
+    return false;
   }
-  return false;
-}
-
-bool decrypt_current(uint8_t *plaintext, uint8_t *plaintext_size,
-                     uint8_t *state, const uint8_t *ciphertext,
-                     const size_t ciphertext_size) {
-  return decrypt_ciphertext(plaintext, plaintext_size, get_receiving_key(state),
-                            get_receiving_nonce(state), ciphertext,
-                            ciphertext_size);
-}
-
-bool decrypt_skipped(uint8_t *plaintext, uint8_t *plaintext_size,
-                     uint8_t *index, uint8_t *state, const uint8_t *ciphertext,
-                     const size_t ciphertext_size) {
-  uint8_t *key = get_receiving_key(state);
-  uint8_t nonce[NONCE_SIZE];
-  size_t offset = get_skipped_index(index, nonce, state, 0);
-  size_t session_size = autograph_session_size(state);
-  while (offset <= session_size) {
-    if (decrypt_ciphertext(plaintext, plaintext_size, key, nonce, ciphertext,
-                           ciphertext_size)) {
-      delete_skipped_index(state, offset);
-      return true;
-    }
-    offset = get_skipped_index(index, nonce, state, offset);
+  autograph_use_public_keys(state, message);
+  if (!autograph_key_exchange(our_signature, state, false)) {
+    return false;
   }
-  return false;
+  read_our_public_keys(message, state);
+  memmove(message + HELLO_SIZE, our_signature, SIGNATURE_SIZE);
+  if (!autograph_send(message, HELLO_SIZE + SIGNATURE_SIZE)) {
+    return false;
+  }
+  if (!autograph_receive(message, message_size)) {
+    return false;
+  }
+  if (!autograph_verify_key_exchange(state, message)) {
+    return false;
+  }
+  return true;
 }
 
-bool autograph_decrypt_message(uint8_t *plaintext, uint8_t *plaintext_size,
-                               uint8_t *index, uint8_t *state,
-                               const uint8_t *ciphertext,
-                               const size_t ciphertext_size) {
-  bool success = decrypt_skipped(plaintext, plaintext_size, index, state,
-                                 ciphertext, ciphertext_size);
-  while (!success) {
-    if (!increment_receiving_index(state)) {
-      zeroize(state, STATE_SIZE);
+bool establish_channel(uint8_t *state, uint8_t *message, size_t *message_size,
+                       const bool is_initiator) {
+  uint8_t our_signature[SIGNATURE_SIZE];
+  if (is_initiator) {
+    return establish_channel_initiator(state, message, message_size,
+                                       our_signature);
+  }
+  return establish_channel_responder(state, message, message_size,
+                                     our_signature);
+}
+
+bool perform_responder_operation(uint8_t *state, uint8_t *message,
+                                 size_t *message_size, size_t max_data_size) {
+  if (!autograph_receive(message, message_size)) {
+    return false;
+  }
+  uint8_t plaintext[max_data_size];
+  size_t plaintext_size = 0;
+  if (!autograph_decrypt_message(plaintext, &plaintext_size, state, message,
+                                 *message_size)) {
+    return false;
+  }
+  bool authenticate = false;
+  uint8_t operation = OPERATION_VERIFY;
+  uint64_t data_type = DATA_TYPE_IDENTITY;
+  size_t trusted_parties_size = 0;
+  size_t trust_threshold = 0;
+  if (!parse_operation(&authenticate, operation, &max_data_size,
+                       &trusted_parties_size, &trust_threshold, plaintext,
+                       plaintext_size)) {
+    return false;
+  }
+  if (authenticate) {
+    uint8_t safety_number[SAFETY_NUMBER_SIZE];
+    if (!autograph_safety_number(safety_number, state)) {
       return false;
     }
-    success = decrypt_current(plaintext, plaintext_size, state, ciphertext,
-                              ciphertext_size);
-    if (success) {
-      memmove(index, get_receiving_index(state), INDEX_SIZE);
-    } else if (!skip_index(state)) {
-      zeroize(state, STATE_SIZE);
+    if (!autograph_authenticate(get_their_identity_key(state), safety_number)) {
       return false;
     }
   }
-  return true;
-}
-
-bool autograph_certify_data(uint8_t *signature, uint8_t *state,
-                            const uint8_t *data, const size_t data_size) {
-  return certify_data_ownership(signature, state, get_their_identity_key(state),
-                                data, data_size);
-}
-
-bool autograph_certify_identity(uint8_t *signature, uint8_t *state) {
-  return certify_identity_ownership(signature, state,
-                                    get_their_identity_key(state));
-}
-
-bool autograph_verify_data(uint8_t *state, const uint8_t *data,
-                           const size_t data_size, const uint8_t *public_key,
-                           const uint8_t *signature) {
-  return verify_data_ownership(get_their_identity_key(state), data, data_size,
-                               public_key, signature);
-}
-
-bool autograph_verify_identity(uint8_t *state, const uint8_t *public_key,
-                               const uint8_t *signature) {
-  return verify_identity_ownership(get_their_identity_key(state), public_key,
-                                   signature);
-}
-
-bool derive_session_key(uint8_t *key, uint8_t *state) {
-  uint8_t okm[OKM_SIZE];
-  bool success = kdf(okm, get_sending_key(state));
-  if (success) {
-    memmove(key, okm, SECRET_KEY_SIZE);
-  }
-  zeroize(okm, OKM_SIZE);
-  return success;
-}
-
-bool autograph_close_session(uint8_t *key, uint8_t *ciphertext,
-                             uint8_t *state) {
-  if (!derive_session_key(key, state)) {
-    zeroize(state, STATE_SIZE);
+  size_t certificates_size =
+      trust_threshold * (PUBLIC_KEY_SIZE + SIGNATURE_SIZE);
+  size_t data_size = 0;
+  if (!autograph_prove(plaintext + certificates_size, &data_size, plaintext,
+                       get_their_identity_key(state), data_type,
+                       max_data_size - certificates_size,
+                       plaintext + TRUSTED_PARTIES_OFFSET, trust_threshold)) {
     return false;
   }
-  size_t plaintext_size = autograph_session_size(state);
-  uint8_t plaintext[plaintext_size];
-  memmove(plaintext, state, plaintext_size);
-  uint8_t nonce[NONCE_SIZE];
-  zeroize(nonce, NONCE_SIZE);
-  bool success =
-      encrypt_plaintext(ciphertext, key, nonce, plaintext, plaintext_size);
-  zeroize(state, STATE_SIZE);
-  zeroize(plaintext, plaintext_size);
-  return success;
+  plaintext_size = certificates_size + data_size;
+  if (!autograph_encrypt_message(message, state, plaintext, plaintext_size)) {
+    return false;
+  }
+  if (!autograph_send(message, plaintext_size + TAG_SIZE)) {
+    return false;
+  }
+  if (operation == OPERATION_VERIFY) {
+    return true;
+  }
+  if (!autograph_receive(message, message_size)) {
+    return false;
+  }
+  if (!autograph_decrypt_message(plaintext, &plaintext_size, state, message,
+                                 *message_size)) {
+    return false;
+  }
+  if (operation == OPERATION_CERTIFY) {
+  }
+  if (!autograph_receive(message, message_size)) {
+    return false;
+  }
+  if (!autograph_decrypt_message(plaintext, &plaintext_size, state, message,
+                                 *message_size)) {
+    return false;
+  }
+  if (operation == OPERATION_CERTIFY) {
+    return autograph_proof(get_their_identity_key(state), plaintext,
+                           get_uint64(plaintext, SIGNATURE_SIZE), data,
+                           data_size);
+  }
+  if (operation == OPERATION_ESTABLISH_KEYS) {
+  }
+
+  if (!autograph_prove()) }
+
+bool autograph_hello(uint8_t *state, size_t max_data_size) {
+  uint8_t message[max_data_size + TAG_SIZE];
+  size_t message_size = 0;
+  if (!establish_channel(state, message, &message_size)) {
+    return false;
+  }
+  return perform_responder_operation(state, message, &message_size,
+                                     max_data_size);
 }
 
-bool autograph_open_session(uint8_t *state, uint8_t *key,
-                            const uint8_t *ciphertext,
-                            const size_t ciphertext_size) {
-  zeroize(state, STATE_SIZE);
-  size_t padded_size = autograph_plaintext_size(ciphertext_size);
-  uint8_t plaintext[padded_size];
-  uint8_t plaintext_size[SIZE_SIZE];
-  uint8_t nonce[NONCE_SIZE];
-  zeroize(nonce, NONCE_SIZE);
-  bool success = decrypt_ciphertext(plaintext, plaintext_size, key, nonce,
-                                    ciphertext, ciphertext_size);
-  zeroize(key, SECRET_KEY_SIZE);
-  if (success) {
-    memmove(state, plaintext, autograph_read_size(plaintext_size));
-  }
-  return success;
-}
+bool autograph_certify(uint8_t *public_key, uint8_t *data, size_t *data_size,
+                       uint8_t *state, const uint64_t data_type,
+                       const uint8_t *trusted_parties,
+                       const size_t trusted_parties_size,
+                       const size_t trust_threshold, const bool authenticate);
+
+bool autograph_verify(uint8_t *public_key, uint8_t *data, size_t *data_size,
+                      uint8_t *state, const uint64_t data_type,
+                      const uint8_t *trusted_parties,
+                      const size_t trusted_parties_size,
+                      const size_t trust_threshold, const bool authenticate);
+
+bool autograph_establish_keys(uint8_t *public_key, uint8_t *sending_key,
+                              uint8_t *receiving_key, uint8_t *state,
+                              const uint8_t *trusted_parties,
+                              const size_t trusted_parties_size,
+                              const size_t trust_threshold,
+                              const bool authenticate);
