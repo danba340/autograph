@@ -28,3 +28,13 @@ Cargo.lock
 # TypeScript-specific files
 typescript/dist/
 node_modules/
+
+# Go-specific files
+go/*.exe
+go/*.exe~
+go/*.dll
+go/*.so
+go/*.dylib
+go/*.test
+go/*.out
+go/go.work
