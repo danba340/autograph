@@ -3,9 +3,10 @@ package state
 import (
 	"math"
 
-	c "github.com/danba340/autograph/constants"
-	"github.com/danba340/autograph/numbers"
-	t "github.com/danba340/autograph/types"
+	c "github.com/christoffercarlsson/autograph/constants"
+	e "github.com/christoffercarlsson/autograph/external"
+	"github.com/christoffercarlsson/autograph/numbers"
+	t "github.com/christoffercarlsson/autograph/types"
 )
 
 func SetIdentityKeyPair(state *t.State, keyPair *t.KeyPair) {
@@ -61,9 +62,8 @@ func GetEphemeralPrivateKey(state *t.State) *t.PrivateKey {
 }
 
 func DeleteEphemeralPrivateKey(state *t.State) {
-	for i := c.EPHEMERAL_KEY_PAIR_OFFSET; i < c.EPHEMERAL_KEY_PAIR_OFFSET+c.PRIVATE_KEY_SIZE; i += 1 {
-		state[i] = 0
-	}
+	ephPrivKeySlice := state[c.EPHEMERAL_KEY_PAIR_OFFSET : c.EPHEMERAL_KEY_PAIR_OFFSET+c.PRIVATE_KEY_SIZE]
+	e.Zeroize(&ephPrivKeySlice)
 }
 
 func GetTheirEphemeralKey(state *t.State) *t.PublicKey {
@@ -141,9 +141,8 @@ func GetTranscript(state *t.State) *t.Transcript {
 }
 
 func ZeroizeSkippedIndexes(state *t.State) {
-	for i := c.SKIPPED_INDEXES_MIN_OFFSET; i < c.STATE_SIZE; i += 1 {
-		state[i] = 0
-	}
+	skippedIndexesSlice := state[c.SKIPPED_INDEXES_MIN_OFFSET:]
+	e.Zeroize(&skippedIndexesSlice)
 }
 
 func CalculateStateSize(state *t.State) int {
@@ -191,10 +190,10 @@ func GetSkippedIndex(
 	}
 	nextOffset := o + int(c.INDEX_SIZE)
 	slice := state[o:nextOffset]
-	for i := range slice {
-		index[i] = slice[i]
-		nonce[i+int(c.NONCE_SIZE)-int(c.INDEX_SIZE)] = slice[i]
-	}
+
+	copy((*index)[:], slice)
+	copy((*nonce)[c.NONCE_SIZE-c.INDEX_SIZE:], slice)
+
 	return nextOffset
 }
 
@@ -205,9 +204,8 @@ func DeleteSkippedIndex(state *t.State, nextOffset int) {
 	if offset != lastOffset {
 		copy(state[offset:offset+int(sessionSize)], state[lastOffset:lastOffset+sessionSize])
 	}
-	for i := lastOffset; i < len(state); i += 1 {
-		state[i] = 0
-	}
+	skippedIndexSlice := state[lastOffset:]
+	e.Zeroize(&skippedIndexSlice)
 }
 
 func GetState(state *t.State) *[]byte {

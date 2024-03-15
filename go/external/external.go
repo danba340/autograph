@@ -6,8 +6,8 @@ import (
 	"crypto/sha512"
 	"io"
 
-	c "github.com/danba340/autograph/constants"
-	t "github.com/danba340/autograph/types"
+	c "github.com/christoffercarlsson/autograph/constants"
+	t "github.com/christoffercarlsson/autograph/types"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
@@ -37,9 +37,8 @@ func Decrypt(plainText *[]byte, key *t.SecretKey, nonce *t.Nonce, cipherText *[]
 	if err != nil {
 		return false
 	}
-	for i := range len(result) {
-		(*plainText)[i] = result[i]
-	}
+	copy(*plainText, result)
+
 	*plainText = (*plainText)[:len(result)]
 	return true
 }
@@ -53,20 +52,16 @@ func DiffieHellman(
 	if err != nil {
 		return false
 	}
-	for i := range sharedSecretRef {
-		sharedSecretRef[i] = sharedSecret[i]
-		sharedSecret[i] = 0 // zeroize
-	}
+	copy((*sharedSecretRef)[:], sharedSecret)
+	Zeroize(&sharedSecret)
 	return true
 }
 
 func CreateKeyPair(keyPair *t.KeyPair, privateKey *t.PrivateKey, publicKey *t.PublicKey) {
-	for i := range privateKey {
-		keyPair[i] = privateKey[i]
-		privateKey[i] = 0 // zeroize
-		keyPair[i+int(c.PRIVATE_KEY_SIZE)] = publicKey[i]
-		publicKey[i] = 0 // zeroize
-	}
+	copy((*keyPair)[:], (*privateKey)[:])
+	copy((*keyPair)[c.PRIVATE_KEY_SIZE:], (*publicKey)[:])
+	Zeroize32(privateKey)
+	Zeroize32(publicKey)
 }
 
 func KeyPairEphemeral(keyPair *t.KeyPair) bool {
@@ -77,12 +72,10 @@ func KeyPairEphemeral(keyPair *t.KeyPair) bool {
 	}
 
 	curve25519.ScalarBaseMult(&public, &private)
-	for i := range private {
-		keyPair[i] = private[i]
-		private[i] = 0 // zeroize
-		keyPair[i+int(c.PRIVATE_KEY_SIZE)] = public[i]
-		public[i] = 0 // zeroize
-	}
+	copy((*keyPair)[:], private[:])
+	copy((*keyPair)[c.PRIVATE_KEY_SIZE:], private[:])
+	Zeroize32(&private)
+	Zeroize32(&public)
 	return true
 }
 
@@ -95,25 +88,18 @@ func KeyPairIdentity(keyPair *t.KeyPair) bool {
 	var privateKey = [32]byte(ed25519.NewKeyFromSeed(privSeed32[:]))
 	var publicKey = [32]byte(pub)
 	CreateKeyPair(keyPair, &privateKey, &publicKey)
-	// zeroize
-	for i := range privSeed64 {
-		privSeed64[i] = 0
-		if i < 32 {
-			privSeed32[i] = 0
-			pub[i] = 0
-			privateKey[i] = 0
-			publicKey[i] = 0
-		}
-	}
+	Zeroize((*[]byte)(&privSeed64))
+	Zeroize((*[]byte)(&pub))
+	Zeroize32(&privSeed32)
+	Zeroize32(&privateKey)
+	Zeroize32(&publicKey)
 	return true
 }
 
 func Sign(signature *t.Signature, keyPair *t.KeyPair, message *[]byte) bool {
 	key := ed25519.NewKeyFromSeed(keyPair[:32])
 	signed := ed25519.Sign(key, *message)
-	for i := range signature {
-		signature[i] = signed[i]
-	}
+	copy((*signature)[:], signed)
 	return true
 }
 
@@ -123,9 +109,7 @@ func Verify(publicKey *t.PublicKey, signature *t.Signature, message *[]byte) boo
 
 func Hash(digest *t.Digest, message []byte) bool {
 	result := sha512.Sum512(message)
-	for i := range digest {
-		digest[i] = result[i]
-	}
+	copy((*digest)[:], result[:])
 	return true
 }
 
@@ -133,4 +117,28 @@ func Hkdf(okm *[]byte, ikm *[]byte, salt *[]byte, info *[]byte) bool {
 	hkdf := hkdf.New(sha512.New, *ikm, *salt, *info)
 	_, err := io.ReadFull(hkdf, (*okm))
 	return err == nil
+}
+
+func Zeroize(data *[]byte) {
+	for i := range *data {
+		(*data)[i] = 0
+	}
+}
+
+func ZeroizeState(state *[c.STATE_SIZE]byte) {
+	for i := range *state {
+		(*state)[i] = 0
+	}
+}
+
+func Zeroize64(arr *[64]byte) {
+	for i := range *arr {
+		(*arr)[i] = 0
+	}
+}
+
+func Zeroize32(arr *[32]byte) {
+	for i := range *arr {
+		(*arr)[i] = 0
+	}
 }

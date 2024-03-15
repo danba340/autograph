@@ -3,10 +3,10 @@ package cert
 import (
 	"math"
 
-	c "github.com/danba340/autograph/constants"
-	"github.com/danba340/autograph/external"
-	s "github.com/danba340/autograph/state"
-	t "github.com/danba340/autograph/types"
+	c "github.com/christoffercarlsson/autograph/constants"
+	"github.com/christoffercarlsson/autograph/external"
+	s "github.com/christoffercarlsson/autograph/state"
+	t "github.com/christoffercarlsson/autograph/types"
 )
 
 func CreateSubject(data *[]byte) []byte {
@@ -23,12 +23,10 @@ func CreateSubject(data *[]byte) []byte {
 func CalculateSubject(publicKey *t.PublicKey, data *[]byte) []byte {
 	subject := CreateSubject(data)
 	keyOffset := len(subject) - int(c.PUBLIC_KEY_SIZE)
-	for i := uint16(0); i < uint16(keyOffset); i += 1 {
-		subject[i] = (*data)[i]
-	}
-	for i := uint16(0); i < c.PUBLIC_KEY_SIZE; i += 1 {
-		subject[i+uint16(keyOffset)] = publicKey[i]
-	}
+
+	copy(subject[:keyOffset], (*data)[:keyOffset])
+	copy(subject[keyOffset:], (*publicKey)[:])
+
 	return subject
 }
 

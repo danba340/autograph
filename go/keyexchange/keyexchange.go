@@ -1,12 +1,12 @@
 package keyexchange
 
 import (
-	"github.com/danba340/autograph/cert"
-	c "github.com/danba340/autograph/constants"
-	e "github.com/danba340/autograph/external"
-	"github.com/danba340/autograph/kdf"
-	s "github.com/danba340/autograph/state"
-	t "github.com/danba340/autograph/types"
+	"github.com/christoffercarlsson/autograph/cert"
+	c "github.com/christoffercarlsson/autograph/constants"
+	e "github.com/christoffercarlsson/autograph/external"
+	"github.com/christoffercarlsson/autograph/kdf"
+	s "github.com/christoffercarlsson/autograph/state"
+	t "github.com/christoffercarlsson/autograph/types"
 )
 
 func DeriveSecretKeys(state *t.State, isInitiator bool) bool {
@@ -20,12 +20,8 @@ func DeriveSecretKeys(state *t.State, isInitiator bool) bool {
 	kdfSuccess := kdf.Kdf(&okm, &sharedSecret)
 	s.SetSecretKeys(state, isInitiator, &okm)
 
-	for i := range okm {
-		if i < 32 {
-			sharedSecret[i] = 0
-		}
-		okm[i] = 0
-	}
+	e.Zeroize64(&okm)
+	e.Zeroize32(&sharedSecret)
 	return dhSuccess && kdfSuccess
 }
 
@@ -41,9 +37,7 @@ func KeyExchange(ourSignature *t.Signature, state *t.State, isInitiator bool) bo
 		&transcript,
 	)
 	if !certifySuccess || !keySuccess {
-		for i := range state {
-			state[i] = 0
-		}
+		e.ZeroizeState(state)
 		return false
 	}
 	return true
@@ -57,9 +51,7 @@ func VerifyKeyExchange(state *t.State, theirSignature t.Signature) bool {
 		s.GetTheirIdentityKey(state),
 		&theirSignature,
 	) {
-		for i := range state {
-			state[i] = 0
-		}
+		e.ZeroizeState(state)
 		return false
 	}
 	s.ZeroizeSkippedIndexes(state)

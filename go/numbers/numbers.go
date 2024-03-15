@@ -3,7 +3,7 @@ package numbers
 import (
 	"encoding/binary"
 
-	t "github.com/danba340/autograph/types"
+	t "github.com/christoffercarlsson/autograph/types"
 )
 
 func GetUint32(bytes *[]byte, offset int) uint32 {

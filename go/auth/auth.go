@@ -3,11 +3,11 @@ package auth
 import (
 	"bytes"
 
-	c "github.com/danba340/autograph/constants"
-	"github.com/danba340/autograph/external"
-	"github.com/danba340/autograph/numbers"
-	s "github.com/danba340/autograph/state"
-	t "github.com/danba340/autograph/types"
+	c "github.com/christoffercarlsson/autograph/constants"
+	"github.com/christoffercarlsson/autograph/external"
+	"github.com/christoffercarlsson/autograph/numbers"
+	s "github.com/christoffercarlsson/autograph/state"
+	t "github.com/christoffercarlsson/autograph/types"
 )
 
 func EncodeFingerprint(fingerprint *t.Fingerprint, digest *t.Digest) {
@@ -25,19 +25,15 @@ func CalculateFingerprint(fingerprint *t.Fingerprint, publicKey *t.PublicKey) bo
 	external.Hash(&a, publicKey[:])
 	for i := 1; i < int(c.FINGERPRINT_ITERATIONS); i += 1 {
 		external.Hash(&b, a[:])
-		for i := range a {
-			a[i] = b[i]
-		}
+		copy(a[:], b[:])
 	}
 	EncodeFingerprint(fingerprint, &a)
 	return true
 }
 
 func SetSafetyNumber(safetyNumber *t.SafetyNumber, a *t.Fingerprint, b *t.Fingerprint) {
-	for i := range a {
-		safetyNumber[i] = a[i]
-		safetyNumber[i+int(c.FINGERPRINT_SIZE)] = b[i]
-	}
+	copy((*safetyNumber)[:], a[:])
+	copy((*safetyNumber)[c.FINGERPRINT_SIZE:], b[:])
 }
 
 func Authenticate(safetyNumber *t.SafetyNumber, state *t.State) bool {

@@ -3,15 +3,15 @@ package channel
 import (
 	"fmt"
 
-	"github.com/danba340/autograph/auth"
-	"github.com/danba340/autograph/cert"
-	c "github.com/danba340/autograph/constants"
-	e "github.com/danba340/autograph/external"
-	"github.com/danba340/autograph/kdf"
-	"github.com/danba340/autograph/keyexchange"
-	"github.com/danba340/autograph/numbers"
-	s "github.com/danba340/autograph/state"
-	t "github.com/danba340/autograph/types"
+	"github.com/christoffercarlsson/autograph/auth"
+	"github.com/christoffercarlsson/autograph/cert"
+	c "github.com/christoffercarlsson/autograph/constants"
+	e "github.com/christoffercarlsson/autograph/external"
+	"github.com/christoffercarlsson/autograph/kdf"
+	"github.com/christoffercarlsson/autograph/keyexchange"
+	"github.com/christoffercarlsson/autograph/numbers"
+	s "github.com/christoffercarlsson/autograph/state"
+	t "github.com/christoffercarlsson/autograph/types"
 )
 
 func UseKeyPairs(
@@ -20,22 +20,16 @@ func UseKeyPairs(
 	identityKeyPair t.KeyPair,
 	ephemeralKeyPair t.KeyPair,
 ) bool {
-	for i := range state {
-		state[i] = 0
-	}
+	e.ZeroizeState(state)
 	if !e.Init() {
 		return false
 	}
 	s.SetIdentityKeyPair(state, &identityKeyPair)
 	s.SetEphemeralKeyPair(state, &ephemeralKeyPair)
-	for i := uint16(0); i < c.PRIVATE_KEY_SIZE; i += 1 {
-		publicKeys[i] = identityKeyPair[i+c.PRIVATE_KEY_SIZE]
-		publicKeys[i+c.PUBLIC_KEY_SIZE] = ephemeralKeyPair[i+c.PRIVATE_KEY_SIZE]
-	}
-	for i := uint16(0); i < c.KEY_PAIR_SIZE; i += 1 {
-		identityKeyPair[i] = 0
-		ephemeralKeyPair[i] = 0
-	}
+	copy((*publicKeys)[:], identityKeyPair[c.PRIVATE_KEY_SIZE:])
+	copy((*publicKeys)[c.PUBLIC_KEY_SIZE:], ephemeralKeyPair[c.PRIVATE_KEY_SIZE:])
+	e.Zeroize64(&identityKeyPair)
+	e.Zeroize64(&ephemeralKeyPair)
 	return true
 }
 
@@ -84,9 +78,7 @@ func EncryptMessage(
 	plainText *[]byte,
 ) bool {
 	if !s.IncrementSendingIndex(state) {
-		for i := range state {
-			state[i] = 0
-		}
+		e.ZeroizeState(state)
 		return false
 	}
 	if !EncryptPlainText(
@@ -95,15 +87,11 @@ func EncryptMessage(
 		s.GetSendingNonce(state),
 		plainText,
 	) {
-		for i := range state {
-			state[i] = 0
-		}
+		e.ZeroizeState(state)
 		return false
 	}
 	idx := s.GetSendingIndex(state)
-	for i := range index {
-		index[i] = idx[i]
-	}
+	copy((*index)[:], idx[:])
 	return true
 }
 
@@ -197,21 +185,15 @@ func DecryptMessage(
 	}
 	for {
 		if !s.IncrementReceivingIndex(state) {
-			for i := range state {
-				state[i] = 0
-			}
+			e.ZeroizeState(state)
 			return false
 		}
 		if DecryptCurrent(plainText, plainTextSize, state, cipherText) {
 			receivingIndex := s.GetReceivingIndex(state)
-			for i := range index {
-				index[i] = receivingIndex[i]
-			}
+			copy((*index)[:], receivingIndex[:])
 			return true
 		} else if !s.SkipIndex(state) {
-			for i := range state {
-				state[i] = 0
-			}
+			e.ZeroizeState(state)
 			return false
 		}
 	}
@@ -250,32 +232,22 @@ func DeriveSessionKey(key *t.SecretKey, state *t.State) bool {
 	okm := [c.OKM_SIZE]byte{}
 	success := kdf.Kdf(&okm, s.GetSendingKey(state))
 	if success {
-		for i := 0; i < int(c.SECRET_KEY_SIZE); i += 1 {
-			key[i] = okm[i]
-		}
+		copy(key[:], okm[:c.SECRET_KEY_SIZE])
 	}
-	for i := range okm {
-		okm[i] = 0
-	}
+	e.Zeroize64(&okm)
 	return success
 }
 
 func CloseChannel(key *t.SecretKey, cipherText *[]byte, state *t.State) bool {
 	if !DeriveSessionKey(key, state) {
-		for i := range state {
-			state[i] = 0
-		}
+		e.ZeroizeState(state)
 		return false
 	}
 	plainText := s.GetState(state)
 	var nonce t.Nonce = [c.NONCE_SIZE]byte{}
 	success := EncryptPlainText(cipherText, key, &nonce, plainText)
-	for i := range state {
-		state[i] = 0
-	}
-	for i := range *plainText {
-		(*plainText)[i] = 0
-	}
+	e.ZeroizeState(state)
+	e.Zeroize(plainText)
 	return success
 }
 
@@ -284,14 +256,10 @@ func OpenChannel(state *t.State, key *t.SecretKey, cipherText *[]byte) bool {
 	var plainTextSize t.Size = [c.SIZE_SIZE]byte{}
 	var nonce t.Nonce = [c.NONCE_SIZE]byte{}
 	success := DecryptCipherText(&plainText, &plainTextSize, key, &nonce, cipherText)
-	for i := range *key {
-		(*key)[i] = 0
-	}
+	e.Zeroize32(key)
 	if success {
 		size := numbers.ReadSize(plainTextSize)
-		for i := range size {
-			state[i] = plainText[i]
-		}
+		copy((*state)[:size], plainText)
 	}
 	return success
 }

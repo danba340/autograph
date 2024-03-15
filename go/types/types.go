@@ -1,7 +1,7 @@
 package types
 
 import (
-	c "github.com/danba340/autograph/constants"
+	c "github.com/christoffercarlsson/autograph/constants"
 )
 
 type Bytes = []byte
