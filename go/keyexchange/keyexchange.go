@@ -1,12 +1,12 @@
 package keyexchange
 
 import (
-	"github.com/christoffercarlsson/autograph/cert"
-	c "github.com/christoffercarlsson/autograph/constants"
-	e "github.com/christoffercarlsson/autograph/external"
-	"github.com/christoffercarlsson/autograph/kdf"
-	s "github.com/christoffercarlsson/autograph/state"
-	t "github.com/christoffercarlsson/autograph/types"
+	"github.com/danba340/autograph/cert"
+	c "github.com/danba340/autograph/constants"
+	e "github.com/danba340/autograph/external"
+	"github.com/danba340/autograph/kdf"
+	s "github.com/danba340/autograph/state"
+	t "github.com/danba340/autograph/types"
 )
 
 func DeriveSecretKeys(state *t.State, isInitiator bool) bool {

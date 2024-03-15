@@ -3,9 +3,9 @@ package keypair
 import (
 	"fmt"
 
-	c "github.com/christoffercarlsson/autograph/constants"
-	e "github.com/christoffercarlsson/autograph/external"
-	t "github.com/christoffercarlsson/autograph/types"
+	c "github.com/danba340/autograph/constants"
+	e "github.com/danba340/autograph/external"
+	t "github.com/danba340/autograph/types"
 )
 
 func EphemeralKeyPair(keyPair *t.KeyPair) bool {

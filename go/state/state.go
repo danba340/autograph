@@ -3,9 +3,9 @@ package state
 import (
 	"math"
 
-	c "github.com/christoffercarlsson/autograph/constants"
-	"github.com/christoffercarlsson/autograph/numbers"
-	t "github.com/christoffercarlsson/autograph/types"
+	c "github.com/danba340/autograph/constants"
+	"github.com/danba340/autograph/numbers"
+	t "github.com/danba340/autograph/types"
 )
 
 func SetIdentityKeyPair(state *t.State, keyPair *t.KeyPair) {
