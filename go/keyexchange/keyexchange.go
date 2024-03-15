@@ -37,7 +37,7 @@ func KeyExchange(ourSignature *t.Signature, state *t.State, isInitiator bool) bo
 		&transcript,
 	)
 	if !certifySuccess || !keySuccess {
-		e.ZeroizeState(state)
+		s.ZeroizeState(state)
 		return false
 	}
 	return true
@@ -51,7 +51,7 @@ func VerifyKeyExchange(state *t.State, theirSignature t.Signature) bool {
 		s.GetTheirIdentityKey(state),
 		&theirSignature,
 	) {
-		e.ZeroizeState(state)
+		s.ZeroizeState(state)
 		return false
 	}
 	s.ZeroizeSkippedIndexes(state)

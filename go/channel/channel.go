@@ -20,7 +20,8 @@ func UseKeyPairs(
 	identityKeyPair t.KeyPair,
 	ephemeralKeyPair t.KeyPair,
 ) bool {
-	e.ZeroizeState(state)
+
+	s.ZeroizeState(state)
 	if !e.Init() {
 		return false
 	}
@@ -78,7 +79,7 @@ func EncryptMessage(
 	plainText *[]byte,
 ) bool {
 	if !s.IncrementSendingIndex(state) {
-		e.ZeroizeState(state)
+		s.ZeroizeState(state)
 		return false
 	}
 	if !EncryptPlainText(
@@ -87,7 +88,7 @@ func EncryptMessage(
 		s.GetSendingNonce(state),
 		plainText,
 	) {
-		e.ZeroizeState(state)
+		s.ZeroizeState(state)
 		return false
 	}
 	idx := s.GetSendingIndex(state)
@@ -128,6 +129,7 @@ func DecryptCipherText(
 	nonce *t.Nonce,
 	cipherText *[]byte,
 ) bool {
+
 	if e.Decrypt(plainText, key, nonce, cipherText) {
 		return UnPad(plainTextSize, plainText)
 	}
@@ -185,7 +187,7 @@ func DecryptMessage(
 	}
 	for {
 		if !s.IncrementReceivingIndex(state) {
-			e.ZeroizeState(state)
+			s.ZeroizeState(state)
 			return false
 		}
 		if DecryptCurrent(plainText, plainTextSize, state, cipherText) {
@@ -193,7 +195,7 @@ func DecryptMessage(
 			copy((*index)[:], receivingIndex[:])
 			return true
 		} else if !s.SkipIndex(state) {
-			e.ZeroizeState(state)
+			s.ZeroizeState(state)
 			return false
 		}
 	}
@@ -240,13 +242,13 @@ func DeriveSessionKey(key *t.SecretKey, state *t.State) bool {
 
 func CloseChannel(key *t.SecretKey, cipherText *[]byte, state *t.State) bool {
 	if !DeriveSessionKey(key, state) {
-		e.ZeroizeState(state)
+		s.ZeroizeState(state)
 		return false
 	}
 	plainText := s.GetState(state)
 	var nonce t.Nonce = [c.NONCE_SIZE]byte{}
 	success := EncryptPlainText(cipherText, key, &nonce, plainText)
-	e.ZeroizeState(state)
+	s.ZeroizeState(state)
 	e.Zeroize(plainText)
 	return success
 }

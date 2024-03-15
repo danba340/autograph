@@ -125,20 +125,12 @@ func Zeroize(data *[]byte) {
 	}
 }
 
-func ZeroizeState(state *[c.STATE_SIZE]byte) {
-	for i := range *state {
-		(*state)[i] = 0
-	}
-}
-
 func Zeroize64(arr *[64]byte) {
-	for i := range *arr {
-		(*arr)[i] = 0
-	}
+	slice := arr[:]
+	Zeroize(&slice)
 }
 
 func Zeroize32(arr *[32]byte) {
-	for i := range *arr {
-		(*arr)[i] = 0
-	}
+	slice := arr[:]
+	Zeroize(&slice)
 }

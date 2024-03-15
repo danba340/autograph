@@ -212,3 +212,8 @@ func GetState(state *t.State) *[]byte {
 	stateSlice := state[:CalculateStateSize(state)]
 	return &stateSlice
 }
+
+func ZeroizeState(state *[c.STATE_SIZE]byte) {
+	stateSlice := state[:]
+	e.Zeroize(&stateSlice)
+}
