@@ -1,291 +1,214 @@
-import { SignFunction, KeyPair } from '../../types'
 import {
-  PUBLIC_KEY_SIZE,
-  SIGNATURE_SIZE,
-  createCiphertextBytes,
-  createHandshakeBytes,
-  createIndexBytes,
-  createPlaintextBytes,
-  createSecretKeyBytes,
-  createSizeBytes,
-  createSkippedKeysBytes,
-  createSubjectBytes,
-  createTranscriptBytes
-} from './utils'
-import {
-  autograph_decrypt,
-  autograph_encrypt,
-  autograph_init,
-  autograph_key_exchange_signature,
-  autograph_key_exchange_transcript,
-  autograph_key_exchange_verify,
-  autograph_read_uint32,
-  autograph_read_uint64,
-  autograph_subject,
+  autograph_authenticate,
+  autograph_certify_data,
+  autograph_certify_identity,
+  autograph_ciphertext_size,
+  autograph_close_session,
+  autograph_decrypt_message,
+  autograph_encrypt_message,
+  autograph_hello_size,
+  autograph_index_size,
+  autograph_key_exchange,
+  autograph_open_session,
+  autograph_plaintext_size,
+  autograph_read_index,
+  autograph_read_size,
+  autograph_safety_number_size,
+  autograph_secret_key_size,
+  autograph_session_size,
+  autograph_signature_size,
+  autograph_size_size,
+  autograph_state_size,
+  autograph_use_key_pairs,
+  autograph_use_public_keys,
   autograph_verify_data,
-  autograph_verify_identity
+  autograph_verify_identity,
+  autograph_verify_key_exchange
 } from './clib'
-import {
-  ChannelUnestablishedError,
-  DecryptionError,
-  EncryptionError,
-  InitializationError,
-  KeyExchangeError,
-  KeyExchangeVerificationError
-} from './error'
-import calculateSafetyNumber from './safety-number'
 
-class DecryptionState {
-  public decryptIndex: Uint8Array
-  public messageIndex: Uint8Array
-  public plaintextSize: Uint8Array
-  public secretKey: Uint8Array
-  public skippedKeys: Uint8Array
+const createHello = () => new Uint8Array(autograph_hello_size())
 
-  constructor(secretKey: Uint8Array) {
-    this.decryptIndex = createIndexBytes()
-    this.messageIndex = createIndexBytes()
-    this.plaintextSize = createSizeBytes()
-    this.secretKey = secretKey
-    this.skippedKeys = createSkippedKeysBytes()
-  }
+const createIndex = () => new Uint8Array(autograph_index_size())
 
-  readMessageIndex(): bigint {
-    return autograph_read_uint64(this.messageIndex)
-  }
+const createSafetyNumber = () => new Uint8Array(autograph_safety_number_size())
 
-  private readPlaintextSize(): number {
-    return autograph_read_uint32(this.plaintextSize)
-  }
+const createSecretKey = () => new Uint8Array(autograph_secret_key_size())
 
-  resizeData(plaintext: Uint8Array) {
-    return plaintext.subarray(0, this.readPlaintextSize())
-  }
+const createSignature = () => new Uint8Array(autograph_signature_size())
+
+const createSize = () => new Uint8Array(autograph_size_size())
+
+export const createState = () => new Uint8Array(autograph_state_size())
+
+const createCiphertext = (plaintext: Uint8Array) => {
+  const size = autograph_ciphertext_size(plaintext.byteLength)
+  return new Uint8Array(size)
 }
 
-class EncryptionState {
-  public messageIndex: Uint8Array
-  public secretKey: Uint8Array
-
-  constructor(secretKey: Uint8Array) {
-    this.messageIndex = createIndexBytes()
-    this.secretKey = secretKey
-  }
-
-  readMessageIndex(): bigint {
-    return autograph_read_uint64(this.messageIndex)
-  }
+const createPlaintext = (ciphertext: Uint8Array) => {
+  const size = autograph_plaintext_size(ciphertext.byteLength)
+  return new Uint8Array(size)
 }
 
-const countCertificates = (certificates: Uint8Array) =>
-  certificates.byteLength / (PUBLIC_KEY_SIZE + SIGNATURE_SIZE)
+const createSessionCiphertext = (state: Uint8Array) => {
+  const size = autograph_ciphertext_size(autograph_session_size(state))
+  return new Uint8Array(size)
+}
+
+const readIndex = (bytes: Uint8Array) => autograph_read_index(bytes)
+
+const readSize = (bytes: Uint8Array) => autograph_read_size(bytes)
+
+const resizePlaintext = (plaintext: Uint8Array, size: Uint8Array) =>
+  plaintext.subarray(0, readSize(size))
 
 export default class Channel {
-  private decryptState: DecryptionState = null
-  private encryptState: EncryptionState = null
-  private ourIdentityKey: Uint8Array = null
-  private sign: SignFunction
-  private theirPublicKey: Uint8Array = null
-  private transcript: Uint8Array = null
-  private verified = false
+  private state: Uint8Array
 
-  constructor(sign: SignFunction, ourIdentityKey: Uint8Array) {
-    this.ourIdentityKey = ourIdentityKey
-    this.sign = sign
+  constructor(state: Uint8Array) {
+    this.state = state
   }
 
-  calculateSafetyNumber() {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    return calculateSafetyNumber(this.ourIdentityKey, this.theirPublicKey)
-  }
-
-  close() {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    this.decryptState = null
-    this.encryptState = null
-    this.theirPublicKey = null
-    this.transcript = null
-    this.verified = false
-  }
-
-  static async create(sign: SignFunction, ourIdentityKey: Uint8Array) {
-    if ((await autograph_init()) < 0) {
-      throw new InitializationError()
-    }
-    return Reflect.construct(this, [sign, ourIdentityKey])
-  }
-
-  decrypt(message: Uint8Array): [bigint, Uint8Array] {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    const plaintext = createPlaintextBytes(message.byteLength)
-    const success =
-      autograph_decrypt(
-        plaintext,
-        this.decryptState.plaintextSize,
-        this.decryptState.messageIndex,
-        this.decryptState.decryptIndex,
-        this.decryptState.skippedKeys,
-        this.decryptState.secretKey,
-        message,
-        message.byteLength
-      ) === 0
+  useKeyPairs(
+    identityKeyPair: Uint8Array,
+    ephemeralKeyPair: Uint8Array
+  ): Uint8Array {
+    const publicKeys = createHello()
+    const success = autograph_use_key_pairs(
+      publicKeys,
+      this.state,
+      identityKeyPair,
+      ephemeralKeyPair
+    )
     if (!success) {
-      throw new DecryptionError()
+      throw new Error('Initialization failed')
     }
-    return [
-      this.decryptState.readMessageIndex(),
-      this.decryptState.resizeData(plaintext)
-    ]
+    return publicKeys
   }
 
-  encrypt(plaintext: Uint8Array): [bigint, Uint8Array] {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    const ciphertext = createCiphertextBytes(plaintext.byteLength)
-    const success =
-      autograph_encrypt(
-        ciphertext,
-        this.encryptState.messageIndex,
-        this.encryptState.secretKey,
-        plaintext,
-        plaintext.byteLength
-      ) === 0
+  usePublicKeys(publicKeys: Uint8Array) {
+    autograph_use_public_keys(this.state, publicKeys)
+  }
+
+  authenticate(): Uint8Array {
+    const safetyNumber = createSafetyNumber()
+    const success = autograph_authenticate(safetyNumber, this.state)
     if (!success) {
-      throw new EncryptionError()
+      throw new Error('Authentication failed')
     }
-    return [this.encryptState.readMessageIndex(), ciphertext]
+    return safetyNumber
   }
 
-  isClosed() {
-    return !(this.isEstablished() || this.isInitialized())
+  keyExchange(isInitiator: boolean): Uint8Array {
+    const signature = createSignature()
+    const success = autograph_key_exchange(signature, this.state, isInitiator)
+    if (!success) {
+      throw new Error('Key exchange failed')
+    }
+    return signature
   }
 
-  isEstablished() {
-    return (
-      this.theirPublicKey !== null &&
-      this.decryptState !== null &&
-      this.encryptState !== null &&
-      this.transcript === null &&
-      this.verified
+  verifyKeyExchange(signature: Uint8Array) {
+    const success = autograph_verify_key_exchange(this.state, signature)
+    if (!success) {
+      throw new Error('Key exchange verification failed')
+    }
+  }
+
+  encrypt(plaintext: Uint8Array): [number, Uint8Array] {
+    const ciphertext = createCiphertext(plaintext)
+    const index = createIndex()
+    const success = autograph_encrypt_message(
+      ciphertext,
+      index,
+      this.state,
+      plaintext,
+      plaintext.byteLength
+    )
+    if (!success) {
+      throw new Error('Encryption failed')
+    }
+    return [readIndex(index), ciphertext]
+  }
+
+  decrypt(ciphertext: Uint8Array): [number, Uint8Array] {
+    const plaintext = createPlaintext(ciphertext)
+    const index = createIndex()
+    const size = createSize()
+    const success = autograph_decrypt_message(
+      plaintext,
+      size,
+      index,
+      this.state,
+      ciphertext,
+      ciphertext.byteLength
+    )
+    if (!success) {
+      throw new Error('Decryption failed')
+    }
+    return [readIndex(index), resizePlaintext(plaintext, size)]
+  }
+
+  certifyData(data: Uint8Array): Uint8Array {
+    const signature = createSignature()
+    const success = autograph_certify_data(
+      signature,
+      this.state,
+      data,
+      data.byteLength
+    )
+    if (!success) {
+      throw new Error('Certification failed')
+    }
+    return signature
+  }
+
+  certifyIdentity(): Uint8Array {
+    const signature = createSignature()
+    const success = autograph_certify_identity(signature, this.state)
+    if (!success) {
+      throw new Error('Certification failed')
+    }
+    return signature
+  }
+
+  verifyData(
+    data: Uint8Array,
+    publicKey: Uint8Array,
+    signature: Uint8Array
+  ): boolean {
+    return autograph_verify_data(
+      this.state,
+      data,
+      data.byteLength,
+      publicKey,
+      signature
     )
   }
 
-  isInitialized() {
-    return (
-      this.theirPublicKey !== null &&
-      this.decryptState !== null &&
-      this.encryptState !== null &&
-      this.transcript !== null &&
-      !this.verified
+  verifyIdentity(publicKey: Uint8Array, signature: Uint8Array): boolean {
+    return autograph_verify_identity(this.state, publicKey, signature)
+  }
+
+  close(): [Uint8Array, Uint8Array] {
+    const key = createSecretKey()
+    const ciphertext = createSessionCiphertext(this.state)
+    const success = autograph_close_session(key, ciphertext, this.state)
+    if (!success) {
+      throw new Error('Failed to close session')
+    }
+    return [key, ciphertext]
+  }
+
+  open(key: Uint8Array, ciphertext: Uint8Array) {
+    const success = autograph_open_session(
+      this.state,
+      key,
+      ciphertext,
+      ciphertext.byteLength
     )
-  }
-
-  async performKeyExchange(
-    isInitiator: boolean,
-    ourEphemeralKeyPair: KeyPair,
-    theirIdentityKey: Uint8Array,
-    theirEphemeralKey: Uint8Array
-  ) {
-    const handshake = createHandshakeBytes()
-    const transcript = createTranscriptBytes()
-    const ourSecretKey = createSecretKeyBytes()
-    const theirSecretKey = createSecretKeyBytes()
-    const transcriptSuccess =
-      autograph_key_exchange_transcript(
-        transcript,
-        isInitiator ? 1 : 0,
-        this.ourIdentityKey,
-        ourEphemeralKeyPair.publicKey,
-        theirIdentityKey,
-        theirEphemeralKey
-      ) === 0
-    if (!transcriptSuccess) {
-      throw new KeyExchangeError()
-    }
-    const signature = await this.sign(transcript)
-    const keyExchangeSuccess =
-      autograph_key_exchange_signature(
-        handshake,
-        ourSecretKey,
-        theirSecretKey,
-        isInitiator ? 1 : 0,
-        signature,
-        ourEphemeralKeyPair.privateKey,
-        theirEphemeralKey
-      ) === 0
-    if (!keyExchangeSuccess) {
-      throw new KeyExchangeError()
-    }
-    this.decryptState = new DecryptionState(theirSecretKey)
-    this.encryptState = new EncryptionState(ourSecretKey)
-    this.theirPublicKey = theirIdentityKey
-    this.transcript = transcript
-    this.verified = false
-    return handshake
-  }
-
-  signData(data: Uint8Array) {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    const subject = createSubjectBytes(data.byteLength)
-    autograph_subject(subject, this.theirPublicKey, data, data.byteLength)
-    return this.sign(subject)
-  }
-
-  signIdentity() {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    return this.sign(this.theirPublicKey)
-  }
-
-  verifyData(certificates: Uint8Array, data: Uint8Array) {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    return (
-      autograph_verify_data(
-        this.theirPublicKey,
-        certificates,
-        countCertificates(certificates),
-        data,
-        data.byteLength
-      ) === 0
-    )
-  }
-
-  verifyIdentity(certificates: Uint8Array) {
-    if (!this.isEstablished()) {
-      throw new ChannelUnestablishedError()
-    }
-    return (
-      autograph_verify_identity(
-        this.theirPublicKey,
-        certificates,
-        countCertificates(certificates)
-      ) === 0
-    )
-  }
-
-  verifyKeyExchange(theirHandshake: Uint8Array) {
-    this.verified =
-      autograph_key_exchange_verify(
-        this.transcript,
-        this.theirPublicKey,
-        this.decryptState.secretKey,
-        theirHandshake
-      ) === 0
-    this.transcript = null
-    if (!this.verified) {
-      throw new KeyExchangeVerificationError()
+    if (!success) {
+      throw new Error('Failed to open session')
     }
   }
 }

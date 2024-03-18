@@ -1,27 +1,24 @@
 #include <benchmark/benchmark.h>
 
-#include <vector>
+#include <stdexcept>
 
 #include "autograph.h"
 
-static void ephemeral_key_pair(benchmark::State& state) {
-  std::vector<unsigned char> privateKey(32);
-  std::vector<unsigned char> publicKey(32);
+static void ephemeral_key_pair(benchmark::State& benchmarkState) {
+  Autograph::KeyPair keyPair;
 
-  for (auto _ : state) {
-    if (autograph_key_pair_ephemeral(privateKey.data(), publicKey.data()) !=
-        0) {
+  for (auto _ : benchmarkState) {
+    if (!autograph_ephemeral_key_pair(keyPair.data())) {
       throw std::runtime_error("Ephemeral key pair generation failed");
     }
   }
 }
 
-static void identity_key_pair(benchmark::State& state) {
-  std::vector<unsigned char> privateKey(32);
-  std::vector<unsigned char> publicKey(32);
+static void identity_key_pair(benchmark::State& benchmarkState) {
+  Autograph::KeyPair keyPair;
 
-  for (auto _ : state) {
-    if (autograph_key_pair_identity(privateKey.data(), publicKey.data()) != 0) {
+  for (auto _ : benchmarkState) {
+    if (!autograph_identity_key_pair(keyPair.data())) {
       throw std::runtime_error("Identity key pair generation failed");
     }
   }

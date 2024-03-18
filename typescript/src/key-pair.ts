@@ -1,39 +1,25 @@
-import { KeyPair } from '../../types'
 import {
-  autograph_init,
-  autograph_key_pair_ephemeral,
-  autograph_key_pair_identity
+  autograph_ephemeral_key_pair,
+  autograph_identity_key_pair,
+  autograph_key_pair_size
 } from './clib'
-import { InitializationError, KeyPairGenerationError } from './error'
-import { createPrivateKeyBytes, createPublicKeyBytes } from './utils'
 
-const createKeyPair = () => ({
-  privateKey: createPrivateKeyBytes(),
-  publicKey: createPublicKeyBytes()
-})
+const createKeyPair = () => new Uint8Array(autograph_key_pair_size())
 
-export const generateEphemeralKeyPair = async (): Promise<KeyPair> => {
-  if ((await autograph_init()) < 0) {
-    throw new InitializationError()
-  }
+export const generateIdentityKeyPair = (): Uint8Array => {
   const keyPair = createKeyPair()
-  const success =
-    autograph_key_pair_ephemeral(keyPair.privateKey, keyPair.publicKey) === 0
+  const success = autograph_identity_key_pair(keyPair)
   if (!success) {
-    throw new KeyPairGenerationError()
+    throw new Error('Key generation failed')
   }
   return keyPair
 }
 
-export const generateIdentityKeyPair = async (): Promise<KeyPair> => {
-  if ((await autograph_init()) < 0) {
-    throw new InitializationError()
-  }
+export const generateKeyPair = (): Uint8Array => {
   const keyPair = createKeyPair()
-  const success =
-    autograph_key_pair_identity(keyPair.privateKey, keyPair.publicKey) === 0
+  const success = autograph_ephemeral_key_pair(keyPair)
   if (!success) {
-    throw new KeyPairGenerationError()
+    throw new Error('Key generation failed')
   }
   return keyPair
 }

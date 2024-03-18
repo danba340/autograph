@@ -5,7 +5,6 @@ set -e
 SOURCE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SOURCE_INCLUDE_DIR="${SOURCE_DIR}/include"
 PREFIX="${SOURCE_DIR}/build/apple"
-TARGET_INCLUDE_DIR="${PREFIX}/include"
 XCFRAMEWORK_ARGS=""
 RIMRAF_ARGS=""
 
@@ -31,7 +30,8 @@ swift_module_map() {
 }
 
 build_headers() {
-    cp -R "${SOURCE_INCLUDE_DIR}" "${1}"
+    mkdir "${1}"
+    cp "${SOURCE_INCLUDE_DIR}/autograph.h" "${1}/autograph.h"
     swift_module_map > "${1}/module.modulemap"
 }
 
@@ -68,8 +68,9 @@ build_framework() {
 }
 
 rm -rf "${PREFIX}"
+mkdir "${PREFIX}"
 
-echo "[  0%] Building for iOS..."
+echo "[  1%] Building for iOS..."
 build_target ios arm64
 
 echo "[ 14%] Building for iOS Simulator..."
@@ -90,10 +91,10 @@ build_target tvos arm64
 echo "[ 86%] Building for tvOS Simulator..."
 build_target tvos-simulator arm64 x86_64
 
-echo "[100%] Building XCFramework..."
+echo "[ 97%] Building XCFramework..."
 build_framework
 
-echo "Cleaning up..."
+echo "[100%] Cleaning up..."
 rm -rf ${RIMRAF_ARGS}
 
 echo "Done!"

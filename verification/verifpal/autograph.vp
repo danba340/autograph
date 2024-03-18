@@ -1,75 +1,63 @@
 attacker[active]
 
 principal Alice[
-  knows public salt, ci, cr, na, nb
-  knows private da
-  knows private ika
-  knows private eka
-  pika = G^ika
-  peka = G^eka
+  knows public salt, info
+  knows private alice_data
+  knows private alice_identity_private_key
+  generates alice_ephemeral_private_key
+  alice_identity_public_key = G^alice_identity_private_key
+  alice_ephemeral_public_key = G^alice_ephemeral_private_key
 ]
 
 principal Bob[
-  knows public salt, ci, cr, na, nb
-  knows private db
-  knows private ikb
-  knows private ekb
-  pikb = G^ikb
-  pekb = G^ekb
+  knows public salt, info
+  knows private bob_data
+  knows private bob_identity_private_key
+  generates bob_ephemeral_private_key
+  bob_identity_public_key = G^bob_identity_private_key
+  bob_ephemeral_public_key = G^bob_ephemeral_private_key
 ]
 
-Alice -> Bob: [pika], peka
+Alice -> Bob: [alice_identity_public_key], alice_ephemeral_public_key
 
 principal Bob[
-  tb = CONCAT(pika, pikb, peka, pekb)
-  sb = SIGN(ikb, tb)
-  kmb = peka^ekb
-  skab = HKDF(salt, kmb, ci)
-  skbb = HKDF(salt, kmb, cr)
-  hb = AEAD_ENC(skbb, sb, nil)
+  bob_shared_secret = alice_ephemeral_public_key^bob_ephemeral_private_key
+  bob_receiving_key, bob_sending_key = HKDF(salt, bob_shared_secret, info)
+  bob_signature = SIGN(bob_identity_private_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, alice_identity_public_key))
 ]
 
-Bob -> Alice: [pikb], pekb, hb
+Bob -> Alice: [bob_identity_public_key], bob_ephemeral_public_key, bob_signature
 
 principal Alice[
-  ta = CONCAT(pika, pikb, peka, pekb)
-  kma = pekb^eka
-  skba = HKDF(salt, kma, cr)
-  sba = AEAD_DEC(skba, hb, nil)?
-  _ = SIGNVERIF(pikb, ta, sba)?
-  sa = SIGN(ika, ta)
-  skaa = HKDF(salt, kma, ci)
-  ha = AEAD_ENC(skaa, sa, nil)
+  alice_shared_secret = bob_ephemeral_public_key^alice_ephemeral_private_key
+  alice_sending_key, alice_receiving_key = HKDF(salt, alice_shared_secret, info)
+  _ = SIGNVERIF(bob_identity_public_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, alice_identity_public_key), bob_signature)?
+  alice_signature = SIGN(alice_identity_private_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, bob_identity_public_key))
 ]
 
-Alice -> Bob: ha
+Alice -> Bob: alice_signature
 
 principal Bob[
-  sab = AEAD_DEC(skab, ha, nil)?
-  _ = SIGNVERIF(pika, tb, sab)?
-  skbb1 = HKDF(salt, skbb, nb)
-  mb = AEAD_ENC(skbb1, db, nil)
+  _ = SIGNVERIF(alice_identity_public_key, CONCAT(alice_ephemeral_public_key, bob_ephemeral_public_key, bob_identity_public_key), alice_signature)?
+  bob_message = AEAD_ENC(bob_sending_key, bob_data, nil)
 ]
 
-Bob -> Alice: mb
+Bob -> Alice: bob_message
 
 principal Alice[
-  skba1 = HKDF(salt, skba, nb)
-  _ = AEAD_DEC(skba1, mb, nil)?
-  skaa1 = HKDF(salt, skaa, na)
-  ma = AEAD_ENC(skaa1, da, nil)
+  _ = AEAD_DEC(alice_receiving_key, bob_message, nil)?
+  alice_message = AEAD_ENC(alice_sending_key, alice_data, nil)
 ]
 
-Alice -> Bob: ma
+Alice -> Bob: alice_message
 
 principal Bob[
-  skab1 = HKDF(salt, skab, na)
-  _ = AEAD_DEC(skab1, ma, nil)?
+  _ = AEAD_DEC(bob_receiving_key, alice_message, nil)?
 ]
 
 queries[
-  authentication? Bob -> Alice: mb
-  authentication? Alice -> Bob: ma
-  confidentiality? da
-  confidentiality? db
+  authentication? Bob -> Alice: bob_message
+  authentication? Alice -> Bob: alice_message
+  confidentiality? alice_data
+  confidentiality? bob_data
 ]

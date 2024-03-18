@@ -8,7 +8,7 @@ if(AUTOGRAPH_INSTALL)
     INCLUDES
     DESTINATION include)
 
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cplusplus/include/
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cplusplus/include/autograph.h
           DESTINATION include)
 
   install(

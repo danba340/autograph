@@ -1,8 +1,8 @@
 [package]
 publish = false
-name = "autograph"
+name = "autograph-protocol"
 description = "A Rust implementation of the Autograph protocol"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Christoffer Carlsson <cc@christofferc.com>"]
 edition = "2021"
 keywords = [
@@ -24,11 +24,8 @@ keywords = [
   ]
 repository = "https://github.com/christoffercarlsson/autograph"
 
-[build-dependencies]
-cmake = "0.1.50"
-
 [lib]
-name = "autograph"
+name = "autograph_protocol"
 path = "rust/src/lib.rs"
 
 [[test]]
@@ -39,6 +36,14 @@ path = "rust/tests/channel.rs"
 name = "key_pair_test"
 path = "rust/tests/key_pair.rs"
 
-[[test]]
-name = "safety_number_test"
-path = "rust/tests/safety_number.rs"
+[dependencies]
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["rand_core", "alloc"] }
+ed25519-dalek = { version = "2.1.0", default-features = false, features = ["rand_core", "zeroize"] }
+hkdf = "0.12.4"
+rand_core = "0.6.4"
+sha2 = { version = "0.10.8", default-features = false }
+x25519-dalek = { version = "2.0.0", default-features = false, features = ["static_secrets", "zeroize"] }
+zeroize = "1.7.0"
+
+[dev-dependencies]
+rand = "0.8.5"

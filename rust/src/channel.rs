@@ -1,320 +1,420 @@
-use alloc::vec::Vec;
+use alloc::vec;
 
-use crate::clib::{
-    autograph_decrypt, autograph_encrypt, autograph_init, autograph_key_exchange_signature,
-    autograph_key_exchange_transcript, autograph_key_exchange_verify, autograph_read_uint32,
-    autograph_read_uint64, autograph_subject, autograph_verify_data, autograph_verify_identity,
-};
-use crate::error::Error;
-use crate::key_pair::KeyPair;
-use crate::safety_number::calculate_safety_number;
-use crate::sign::SignFunction;
-use crate::utils::{
-    create_ciphertext_bytes, create_handshake_bytes, create_index_bytes, create_plaintext_bytes,
-    create_secret_key_bytes, create_size_bytes, create_skipped_keys_bytes, create_subject_bytes,
-    create_transcript_bytes, PUBLIC_KEY_SIZE, SIGNATURE_SIZE,
+use crate::{
+    auth::authenticate,
+    cert::{
+        certify_data_ownership, certify_identity_ownership, verify_data_ownership,
+        verify_identity_ownership,
+    },
+    constants::{
+        HELLO_SIZE, INDEX_SIZE, NONCE_SIZE, OKM_SIZE, PADDING_BLOCK_SIZE, PADDING_BYTE,
+        PRIVATE_KEY_SIZE, PUBLIC_KEY_SIZE, SAFETY_NUMBER_SIZE, SECRET_KEY_SIZE, SIGNATURE_SIZE,
+        SIZE_SIZE, STATE_SIZE, TAG_SIZE,
+    },
+    error::Error,
+    external::{decrypt, encrypt, init, zeroize},
+    kdf::kdf,
+    key_exchange::{key_exchange, verify_key_exchange},
+    numbers::{read_index, read_size, set_size},
+    state::{
+        calculate_state_size, delete_skipped_index, get_receiving_index, get_receiving_key,
+        get_receiving_nonce, get_sending_index, get_sending_key, get_sending_nonce,
+        get_skipped_index, get_state, get_their_identity_key, increment_receiving_index,
+        increment_sending_index, set_ephemeral_key_pair, set_identity_key_pair,
+        set_their_ephemeral_key, set_their_identity_key, skip_index,
+    },
+    types::{
+        Bytes, Hello, Index, KeyPair, Nonce, Okm, PublicKey, SafetyNumber, SecretKey, Signature,
+        Size, State,
+    },
 };
 
-#[derive(Clone)]
-pub struct DecryptionState {
-    pub decrypt_index: Vec<u8>,
-    pub message_index: Vec<u8>,
-    pub plaintext_size: Vec<u8>,
-    pub secret_key: Vec<u8>,
-    pub skipped_keys: Vec<u8>,
+fn use_key_pairs(
+    public_keys: &mut Hello,
+    state: &mut State,
+    mut identity_key_pair: KeyPair,
+    mut ephemeral_key_pair: KeyPair,
+) -> bool {
+    zeroize(state);
+    if !init() {
+        return false;
+    }
+    set_identity_key_pair(state, &identity_key_pair);
+    set_ephemeral_key_pair(state, &ephemeral_key_pair);
+    public_keys[..PUBLIC_KEY_SIZE].copy_from_slice(&identity_key_pair[PRIVATE_KEY_SIZE..]);
+    public_keys[PUBLIC_KEY_SIZE..].copy_from_slice(&ephemeral_key_pair[PRIVATE_KEY_SIZE..]);
+    zeroize(&mut identity_key_pair);
+    zeroize(&mut ephemeral_key_pair);
+    true
 }
 
-impl DecryptionState {
-    pub fn new(secret_key: Vec<u8>) -> Self {
-        Self {
-            decrypt_index: create_index_bytes(),
-            message_index: create_index_bytes(),
-            plaintext_size: create_size_bytes(),
-            secret_key,
-            skipped_keys: create_skipped_keys_bytes(),
+fn use_public_keys(state: &mut State, public_keys: Hello) {
+    set_their_identity_key(
+        state,
+        &public_keys[..PUBLIC_KEY_SIZE]
+            .try_into()
+            .unwrap_or([0; PUBLIC_KEY_SIZE]),
+    );
+    set_their_ephemeral_key(
+        state,
+        &public_keys[PUBLIC_KEY_SIZE..]
+            .try_into()
+            .unwrap_or([0; PUBLIC_KEY_SIZE]),
+    );
+}
+
+fn calculate_padded_size(plaintext: &[u8]) -> usize {
+    let size = plaintext.len();
+    size + PADDING_BLOCK_SIZE - (size % PADDING_BLOCK_SIZE)
+}
+
+fn pad(plaintext: &[u8]) -> Bytes {
+    let mut padded = plaintext.to_vec();
+    padded.resize(calculate_padded_size(plaintext), 0);
+    padded[plaintext.len()] = PADDING_BYTE;
+    padded
+}
+
+fn encrypt_plaintext(
+    ciphertext: &mut [u8],
+    key: &SecretKey,
+    nonce: &Nonce,
+    plaintext: &[u8],
+) -> bool {
+    let padded = pad(plaintext);
+    encrypt(ciphertext, key, nonce, &padded)
+}
+
+pub fn encrypt_message(
+    ciphertext: &mut [u8],
+    index: &mut Index,
+    state: &mut State,
+    plaintext: &[u8],
+) -> bool {
+    if !increment_sending_index(state) {
+        zeroize(state);
+        return false;
+    }
+    if !encrypt_plaintext(
+        ciphertext,
+        get_sending_key(state),
+        get_sending_nonce(state),
+        plaintext,
+    ) {
+        zeroize(state);
+        return false;
+    }
+    index.copy_from_slice(get_sending_index(state));
+    true
+}
+
+fn calculate_unpadded_size(padded: &[u8]) -> usize {
+    let size = padded.len();
+    if size == 0 || (size % PADDING_BLOCK_SIZE) > 0 {
+        return 0;
+    }
+    for i in (size - PADDING_BLOCK_SIZE..size).rev() {
+        let byte = padded[i];
+        if byte == PADDING_BYTE {
+            return i;
+        }
+        if byte != 0 {
+            return 0;
         }
     }
+    0
+}
 
-    pub fn read_message_index(&self) -> u64 {
-        unsafe { autograph_read_uint64(self.message_index.as_ptr()) }
+fn unpad(unpadded_size: &mut Size, padded: &[u8]) -> bool {
+    let size = calculate_unpadded_size(padded);
+    if size == 0 {
+        return false;
     }
+    set_size(unpadded_size, size);
+    true
+}
 
-    fn read_plaintext_size(&self) -> usize {
-        unsafe { autograph_read_uint32(self.plaintext_size.as_ptr()) as usize }
-    }
-
-    pub fn resize_data(&self, plaintext: &mut Vec<u8>) {
-        plaintext.truncate(self.read_plaintext_size());
+fn decrypt_ciphertext(
+    plaintext: &mut [u8],
+    plaintext_size: &mut Size,
+    key: &SecretKey,
+    nonce: &Nonce,
+    ciphertext: &[u8],
+) -> bool {
+    if decrypt(plaintext, key, nonce, ciphertext) {
+        unpad(plaintext_size, plaintext)
+    } else {
+        false
     }
 }
 
-#[derive(Clone)]
-pub struct EncryptionState {
-    pub message_index: Vec<u8>,
-    pub secret_key: Vec<u8>,
+fn decrypt_current(
+    plaintext: &mut [u8],
+    plaintext_size: &mut Size,
+    state: &mut State,
+    ciphertext: &[u8],
+) -> bool {
+    decrypt_ciphertext(
+        plaintext,
+        plaintext_size,
+        get_receiving_key(state),
+        get_receiving_nonce(state),
+        ciphertext,
+    )
 }
 
-impl EncryptionState {
-    pub fn new(secret_key: Vec<u8>) -> Self {
-        Self {
-            message_index: create_index_bytes(),
-            secret_key,
+fn decrypt_skipped(
+    plaintext: &mut [u8],
+    plaintext_size: &mut Size,
+    index: &mut Index,
+    state: &mut State,
+    ciphertext: &[u8],
+) -> bool {
+    let key = get_receiving_key(state);
+    let mut nonce: Nonce = [0; NONCE_SIZE];
+    let mut offset = get_skipped_index(index, &mut nonce, state, 0);
+    let session_size = calculate_state_size(state);
+    while offset <= session_size {
+        if decrypt_ciphertext(plaintext, plaintext_size, key, &nonce, ciphertext) {
+            delete_skipped_index(state, offset);
+            return true;
+        }
+        offset = get_skipped_index(index, &mut nonce, state, offset);
+    }
+    false
+}
+
+pub fn decrypt_message(
+    plaintext: &mut [u8],
+    plaintext_size: &mut Size,
+    index: &mut Index,
+    state: &mut State,
+    ciphertext: &[u8],
+) -> bool {
+    let mut success = decrypt_skipped(plaintext, plaintext_size, index, state, ciphertext);
+    while !success {
+        if !increment_receiving_index(state) {
+            zeroize(state);
+            return false;
+        }
+        success = decrypt_current(plaintext, plaintext_size, state, ciphertext);
+        if success {
+            index.copy_from_slice(get_receiving_index(state));
+        } else if !skip_index(state) {
+            zeroize(state);
+            return false;
         }
     }
+    true
+}
 
-    pub fn read_message_index(&self) -> u64 {
-        unsafe { autograph_read_uint64(self.message_index.as_ptr()) }
+pub fn certify_data(signature: &mut Signature, state: &State, data: &[u8]) -> bool {
+    certify_data_ownership(signature, state, get_their_identity_key(state), data)
+}
+
+pub fn certify_identity(signature: &mut Signature, state: &State) -> bool {
+    certify_identity_ownership(signature, state, get_their_identity_key(state))
+}
+
+pub fn verify_data(
+    state: &State,
+    data: &[u8],
+    public_key: &PublicKey,
+    signature: &Signature,
+) -> bool {
+    verify_data_ownership(get_their_identity_key(state), data, public_key, signature)
+}
+
+pub fn verify_identity(state: &State, public_key: &PublicKey, signature: &Signature) -> bool {
+    verify_identity_ownership(get_their_identity_key(state), public_key, signature)
+}
+
+fn create_ciphertext(plaintext: &[u8]) -> Bytes {
+    vec![0; calculate_padded_size(plaintext) + TAG_SIZE]
+}
+
+fn create_plaintext(ciphertext: &[u8]) -> Bytes {
+    vec![0; ciphertext.len() - TAG_SIZE]
+}
+
+fn derive_session_key(key: &mut SecretKey, state: &mut State) -> bool {
+    let mut okm: Okm = [0; OKM_SIZE];
+    let success = kdf(&mut okm, get_sending_key(state));
+    if success {
+        key.copy_from_slice(&okm[..SECRET_KEY_SIZE]);
     }
+    zeroize(&mut okm);
+    success
 }
 
-fn count_certificates(certificates: &Vec<u8>) -> u32 {
-    (certificates.len() / (PUBLIC_KEY_SIZE + SIGNATURE_SIZE)) as u32
+pub fn close_channel(key: &mut SecretKey, ciphertext: &mut [u8], state: &mut State) -> bool {
+    if !derive_session_key(key, state) {
+        zeroize(state);
+        return false;
+    }
+    let mut plaintext = get_state(state).to_vec();
+    let nonce: Nonce = [0; NONCE_SIZE];
+    let success = encrypt_plaintext(ciphertext, key, &nonce, &plaintext);
+    zeroize(state);
+    zeroize(&mut plaintext);
+    success
 }
 
-#[non_exhaustive]
+pub fn open_channel(state: &mut State, key: &mut SecretKey, ciphertext: &[u8]) -> bool {
+    let mut plaintext = create_plaintext(ciphertext);
+    let mut plaintext_size: Size = [0; SIZE_SIZE];
+    let nonce: Nonce = [0; NONCE_SIZE];
+    let success = decrypt_ciphertext(&mut plaintext, &mut plaintext_size, key, &nonce, ciphertext);
+    zeroize(key);
+    if success {
+        let size = read_size(plaintext_size);
+        state[..size].copy_from_slice(&plaintext[..size]);
+    }
+    success
+}
+
+fn resize_plaintext(mut plaintext: Bytes, plaintext_size: Size) -> Bytes {
+    plaintext.resize(read_size(plaintext_size), 0);
+    plaintext
+}
+
 pub struct Channel {
-    decrypt_state: Option<DecryptionState>,
-    encrypt_state: Option<EncryptionState>,
-    our_identity_key: Vec<u8>,
-    sign: SignFunction,
-    their_public_key: Option<Vec<u8>>,
-    transcript: Option<Vec<u8>>,
-    verified: bool,
+    state: State,
 }
 
 impl Channel {
-    pub fn new(sign: SignFunction, our_identity_key: Vec<u8>) -> Result<Self, Error> {
-        if unsafe { autograph_init() } < 0 {
+    pub fn new() -> Self {
+        Self {
+            state: [0; STATE_SIZE],
+        }
+    }
+
+    pub fn use_key_pairs(
+        &mut self,
+        identity_key_pair: KeyPair,
+        ephemeral_key_pair: KeyPair,
+    ) -> Result<Hello, Error> {
+        let mut public_keys: Hello = [0; HELLO_SIZE];
+        let success = use_key_pairs(
+            &mut public_keys,
+            &mut self.state,
+            identity_key_pair,
+            ephemeral_key_pair,
+        );
+        if !success {
             Err(Error::Initialization)
         } else {
-            Ok(Self {
-                decrypt_state: None,
-                encrypt_state: None,
-                our_identity_key,
-                sign,
-                their_public_key: None,
-                transcript: None,
-                verified: false,
-            })
+            Ok(public_keys)
         }
     }
 
-    pub fn calculate_safety_number(&self) -> Result<Vec<u8>, Error> {
-        if !self.is_established() {
-            return Err(Error::ChannelUnestablished);
-        }
-        calculate_safety_number(
-            &self.our_identity_key,
-            self.their_public_key.as_ref().unwrap(),
-        )
+    pub fn use_public_keys(&mut self, public_keys: Hello) {
+        use_public_keys(&mut self.state, public_keys)
     }
 
-    pub fn close(&mut self) -> Result<(), Error> {
-        if !self.is_established() {
-            return Err(Error::ChannelUnestablished);
-        }
-        self.decrypt_state = None;
-        self.encrypt_state = None;
-        self.their_public_key = None;
-        self.transcript = None;
-        self.verified = false;
-        Ok(())
-    }
-
-    pub fn decrypt(&mut self, message: Vec<u8>) -> Result<(u64, Vec<u8>), Error> {
-        if !self.is_established() {
-            return Err(Error::ChannelUnestablished);
-        }
-        let mut data = create_plaintext_bytes(message.len());
-        let state = self.decrypt_state.as_mut().unwrap();
-        let success = unsafe {
-            autograph_decrypt(
-                data.as_mut_ptr(),
-                state.plaintext_size.as_mut_ptr(),
-                state.message_index.as_mut_ptr(),
-                state.decrypt_index.as_mut_ptr(),
-                state.skipped_keys.as_mut_ptr(),
-                state.secret_key.as_mut_ptr(),
-                message.as_ptr(),
-                message.len() as u32,
-            )
-        } == 0;
-        if success {
-            state.resize_data(&mut data);
-            Ok((state.read_message_index(), data))
+    pub fn authenticate(&self) -> Result<SafetyNumber, Error> {
+        let mut safety_number: SafetyNumber = [0; SAFETY_NUMBER_SIZE];
+        let success = authenticate(&mut safety_number, &self.state);
+        if !success {
+            Err(Error::Authentication)
         } else {
-            Err(Error::Decryption)
+            Ok(safety_number)
         }
     }
 
-    pub fn encrypt(&mut self, plaintext: &Vec<u8>) -> Result<(u64, Vec<u8>), Error> {
-        if !self.is_established() {
-            return Err(Error::ChannelUnestablished);
-        }
-        let mut ciphertext = create_ciphertext_bytes(plaintext.len());
-        let state = self.encrypt_state.as_mut().unwrap();
-        let success = unsafe {
-            autograph_encrypt(
-                ciphertext.as_mut_ptr(),
-                state.message_index.as_mut_ptr(),
-                state.secret_key.as_mut_ptr(),
-                plaintext.as_ptr(),
-                plaintext.len() as u32,
-            )
-        } == 0;
-        if success {
-            Ok((state.read_message_index(), ciphertext))
+    pub fn key_exchange(&mut self, is_initiator: bool) -> Result<Signature, Error> {
+        let mut signature: Signature = [0; SIGNATURE_SIZE];
+        let success = key_exchange(&mut signature, &mut self.state, is_initiator);
+        if !success {
+            Err(Error::KeyExchange)
         } else {
+            Ok(signature)
+        }
+    }
+
+    pub fn verify_key_exchange(&mut self, signature: Signature) -> Result<(), Error> {
+        let verified = verify_key_exchange(&mut self.state, signature);
+        if !verified {
+            Err(Error::KeyExchange)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn encrypt(&mut self, plaintext: &[u8]) -> Result<(u32, Bytes), Error> {
+        let mut ciphertext = create_ciphertext(plaintext);
+        let mut index: Index = [0; INDEX_SIZE];
+        let success = encrypt_message(&mut ciphertext, &mut index, &mut self.state, plaintext);
+        if !success {
             Err(Error::Encryption)
+        } else {
+            Ok((read_index(index), ciphertext))
         }
     }
 
-    pub fn is_closed(&self) -> bool {
-        !(self.is_established() || self.is_initialized())
+    pub fn decrypt(&mut self, ciphertext: &[u8]) -> Result<(u32, Bytes), Error> {
+        let mut plaintext = create_plaintext(ciphertext);
+        let mut size: Size = [0; SIZE_SIZE];
+        let mut index: Index = [0; INDEX_SIZE];
+        let success = decrypt_message(
+            &mut plaintext,
+            &mut size,
+            &mut index,
+            &mut self.state,
+            ciphertext,
+        );
+        if !success {
+            Err(Error::Decryption)
+        } else {
+            Ok((read_index(index), resize_plaintext(plaintext, size)))
+        }
     }
 
-    pub fn is_established(&self) -> bool {
-        self.their_public_key.is_some()
-            && self.decrypt_state.is_some()
-            && self.encrypt_state.is_some()
-            && self.transcript.is_none()
-            && self.verified
+    pub fn certify_data(&self, data: &[u8]) -> Result<Signature, Error> {
+        let mut signature: Signature = [0; SIGNATURE_SIZE];
+        let success = certify_data(&mut signature, &self.state, data);
+        if !success {
+            Err(Error::Certification)
+        } else {
+            Ok(signature)
+        }
     }
 
-    pub fn is_initialized(&self) -> bool {
-        self.their_public_key.is_some()
-            && self.decrypt_state.is_some()
-            && self.encrypt_state.is_some()
-            && self.transcript.is_some()
-            && !self.verified
+    pub fn certify_identity(&self) -> Result<Signature, Error> {
+        let mut signature: Signature = [0; SIGNATURE_SIZE];
+        let success = certify_identity(&mut signature, &self.state);
+        if !success {
+            Err(Error::Certification)
+        } else {
+            Ok(signature)
+        }
     }
 
-    pub fn perform_key_exchange(
-        &mut self,
-        is_initiator: bool,
-        mut our_ephemeral_key_pair: KeyPair,
-        their_identity_key: Vec<u8>,
-        their_ephemeral_key: Vec<u8>,
-    ) -> Result<Vec<u8>, Error> {
-        if self.is_established() {
-            return Err(Error::ChannelAlreadyEstablished);
-        }
-        if self.is_initialized() {
-            return Err(Error::ChannelAlreadyInitialized);
-        }
-        let mut handshake = create_handshake_bytes();
-        let mut transcript = create_transcript_bytes();
-        let mut our_secret_key = create_secret_key_bytes();
-        let mut their_secret_key = create_secret_key_bytes();
-        let transcript_success = unsafe {
-            autograph_key_exchange_transcript(
-                transcript.as_mut_ptr(),
-                if is_initiator { 1 } else { 0 },
-                self.our_identity_key.as_ptr(),
-                our_ephemeral_key_pair.public_key.as_ptr(),
-                their_identity_key.as_ptr(),
-                their_ephemeral_key.as_ptr(),
-            )
-        } == 0;
-        if !transcript_success {
-            return Err(Error::KeyExchange);
-        }
-        let signature = (self.sign)(&transcript)?;
-        let key_exchange_success = unsafe {
-            autograph_key_exchange_signature(
-                handshake.as_mut_ptr(),
-                our_secret_key.as_mut_ptr(),
-                their_secret_key.as_mut_ptr(),
-                if is_initiator { 1 } else { 0 },
-                signature.as_ptr(),
-                our_ephemeral_key_pair.private_key.as_mut_ptr(),
-                their_ephemeral_key.as_ptr(),
-            )
-        } == 0;
-        if !key_exchange_success {
-            return Err(Error::KeyExchange);
-        }
-        self.decrypt_state = Some(DecryptionState::new(their_secret_key));
-        self.encrypt_state = Some(EncryptionState::new(our_secret_key));
-        self.their_public_key = Some(their_identity_key);
-        self.transcript = Some(transcript);
-        self.verified = false;
-        Ok(handshake)
+    pub fn verify_data(&self, data: &[u8], public_key: &PublicKey, signature: &Signature) -> bool {
+        verify_data(&self.state, data, public_key, signature)
     }
 
-    pub fn sign_data(&self, data: &Vec<u8>) -> Result<Vec<u8>, Error> {
-        if !self.is_established() {
-            return Err(Error::ChannelUnestablished);
-        }
-        let mut subject = create_subject_bytes(data.len());
-        unsafe {
-            autograph_subject(
-                subject.as_mut_ptr(),
-                self.their_public_key.as_ref().unwrap().as_ptr(),
-                data.as_ptr(),
-                data.len() as u32,
-            );
-        }
-        (self.sign)(&subject)
+    pub fn verify_identity(&self, public_key: &PublicKey, signature: &Signature) -> bool {
+        verify_identity(&self.state, public_key, signature)
     }
 
-    pub fn sign_identity(&self) -> Result<Vec<u8>, Error> {
-        if !self.is_established() {
-            return Err(Error::ChannelUnestablished);
+    pub fn close(&mut self) -> Result<(SecretKey, Bytes), Error> {
+        let mut key: SecretKey = [0; SECRET_KEY_SIZE];
+        let mut ciphertext = create_ciphertext(get_state(&self.state));
+        let success = close_channel(&mut key, &mut ciphertext, &mut self.state);
+        if !success {
+            Err(Error::Session)
+        } else {
+            Ok((key, ciphertext))
         }
-        (self.sign)(self.their_public_key.as_ref().unwrap())
     }
 
-    pub fn verify_data(&self, certificates: &Vec<u8>, data: &Vec<u8>) -> Result<bool, Error> {
-        if !self.is_established() {
-            return Err(Error::ChannelUnestablished);
+    pub fn open(&mut self, key: &mut SecretKey, ciphertext: &[u8]) -> Result<(), Error> {
+        let success = open_channel(&mut self.state, key, ciphertext);
+        if !success {
+            Err(Error::Session)
+        } else {
+            Ok(())
         }
-        let verified = unsafe {
-            autograph_verify_data(
-                self.their_public_key.as_ref().unwrap().as_ptr(),
-                certificates.as_ptr(),
-                count_certificates(certificates),
-                data.as_ptr(),
-                data.len() as u32,
-            )
-        } == 0;
-        Ok(verified)
-    }
-
-    pub fn verify_identity(&self, certificates: &Vec<u8>) -> Result<bool, Error> {
-        if self.their_public_key.is_none() {
-            return Err(Error::ChannelUnestablished);
-        }
-        let verified = unsafe {
-            autograph_verify_identity(
-                self.their_public_key.as_ref().unwrap().as_ptr(),
-                certificates.as_ptr(),
-                count_certificates(certificates),
-            )
-        } == 0;
-        Ok(verified)
-    }
-
-    pub fn verify_key_exchange(&mut self, their_handshake: Vec<u8>) -> Result<(), Error> {
-        if self.is_established() {
-            return Err(Error::ChannelAlreadyEstablished);
-        }
-        if !self.is_initialized() {
-            return Err(Error::ChannelUninitialized);
-        }
-        let state = self.decrypt_state.as_mut().unwrap();
-        self.verified = unsafe {
-            autograph_key_exchange_verify(
-                self.transcript.as_ref().unwrap().as_ptr(),
-                self.their_public_key.as_ref().unwrap().as_ptr(),
-                state.secret_key.as_ptr(),
-                their_handshake.as_ptr(),
-            )
-        } == 0;
-        self.transcript = None;
-        if !self.verified {
-            return Err(Error::KeyExchangeVerification);
-        }
-        Ok(())
     }
 }

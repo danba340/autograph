@@ -1,42 +1,17 @@
-#include "key_pair.h"
-
-#include "error.h"
-#include "init.h"
-#include "sizes.h"
+#include "autograph.h"
 
 namespace Autograph {
 
-KeyPair createKeyPair() {
-  std::vector<unsigned char> privateKey(PRIVATE_KEY_SIZE);
-  std::vector<unsigned char> publicKey(PUBLIC_KEY_SIZE);
-  KeyPair keyPair = {privateKey, publicKey};
-  return keyPair;
+tuple<bool, KeyPair> generateIdentityKeyPair() {
+  KeyPair keyPair;
+  bool success = autograph_identity_key_pair(keyPair.data());
+  return make_tuple(success, keyPair);
 }
 
-KeyPair generateEphemeralKeyPair() {
-  if (autograph_init() != 0) {
-    throw Error(Error::Initialization);
-  }
-  auto keyPair = createKeyPair();
-  bool success = autograph_key_pair_ephemeral(keyPair.privateKey.data(),
-                                              keyPair.publicKey.data()) == 0;
-  if (!success) {
-    throw Error(Error::KeyPairGeneration);
-  }
-  return keyPair;
-}
-
-KeyPair generateIdentityKeyPair() {
-  if (autograph_init() != 0) {
-    throw Error(Error::Initialization);
-  }
-  auto keyPair = createKeyPair();
-  bool success = autograph_key_pair_identity(keyPair.privateKey.data(),
-                                             keyPair.publicKey.data()) == 0;
-  if (!success) {
-    throw Error(Error::KeyPairGeneration);
-  }
-  return keyPair;
+tuple<bool, KeyPair> generateKeyPair() {
+  KeyPair keyPair;
+  bool success = autograph_ephemeral_key_pair(keyPair.data());
+  return make_tuple(success, keyPair);
 }
 
 }  // namespace Autograph
