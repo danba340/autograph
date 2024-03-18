@@ -1,6 +1,7 @@
 package keypair
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -25,6 +26,7 @@ func TestKeyPairEphemral(t *testing.T) {
 
 func TestKeyPairIdentity(t *testing.T) {
 	keyPair, err := GenerateKeyPair()
+	fmt.Println(keyPair)
 	if err != nil {
 		t.Errorf("TEST:KEYPAIR:FAIL GenerateKeyPair Identity returned err")
 	}
